@@ -1,8 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { loadEvents, saveEvents } from "@/src/lib/eventsStorage";
-import type { Event } from "@/src/types/event";
 
 type LatLng = { lat: number; lng: number };
 
@@ -65,6 +63,8 @@ export default function CreateEventForm({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeMessage, setGeocodeMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const locationLabel = useMemo(() => {
     if (!pickedLatLng) {
@@ -73,8 +73,10 @@ export default function CreateEventForm({
     return `${pickedLatLng.lat.toFixed(5)}, ${pickedLatLng.lng.toFixed(5)}`;
   }, [pickedLatLng]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    setSubmitError(null);
 
     const nextErrors: FormErrors = {
       title: validateTitle(title),
@@ -94,29 +96,40 @@ export default function CreateEventForm({
       return;
     }
 
-    const id =
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : Date.now().toString();
-
     const dateISO = dateLocal ? new Date(dateLocal).toISOString() : undefined;
+    setIsSubmitting(true);
 
-    const newEvent: Event = {
-      id,
-      title: title.trim(),
-      address: address.trim() || undefined,
-      description: description.trim() || undefined,
-      dateISO,
-      lat: pickedLatLng!.lat,
-      lng: pickedLatLng!.lng,
-      createdAtISO: new Date().toISOString(),
-    };
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          address: address.trim() || undefined,
+          description: description.trim() || undefined,
+          dateISO,
+          lat: pickedLatLng!.lat,
+          lng: pickedLatLng!.lng,
+        }),
+      });
 
-    const existing = loadEvents();
-    saveEvents([...existing, newEvent]);
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        setSubmitError(data?.error ?? "Failed to create event. Please try again.");
+        return;
+      }
 
-    setErrors({});
-    onSubmitSuccess();
+      setErrors({});
+      onSubmitSuccess();
+    } catch {
+      setSubmitError("Failed to create event. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const geocodeAddress = async () => {
@@ -271,10 +284,12 @@ export default function CreateEventForm({
 
       <button
         className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+        disabled={isSubmitting}
         type="submit"
       >
-        Save Event
+        {isSubmitting ? "Saving..." : "Save Event"}
       </button>
+      {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
     </form>
   );
 }

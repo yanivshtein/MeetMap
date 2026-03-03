@@ -15,7 +15,6 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import type { Icon } from "leaflet";
 import type { Event } from "@/src/types/event";
 import useCurrentLocation from "@/src/hooks/useCurrentLocation";
-import { loadEvents, saveEvents } from "@/src/lib/eventsStorage";
 
 const markerIconUrl = typeof markerIcon === "string" ? markerIcon : markerIcon.src;
 const markerIcon2xUrl =
@@ -49,13 +48,14 @@ function MapViewController({ target }: MapViewControllerProps) {
 }
 
 export default function MapEvents({ initialCenter, initialZoom }: MapEventsProps) {
-  const [events, setEvents] = useState<Event[]>(() => loadEvents());
+  const [events, setEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | undefined>(
     undefined,
   );
   const [defaultIcon, setDefaultIcon] = useState<Icon | undefined>(undefined);
   const [recenterTarget, setRecenterTarget] = useState<LatLng | null>(null);
   const { status, coords, requestLocation } = useCurrentLocation();
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -85,8 +85,37 @@ export default function MapEvents({ initialCenter, initialZoom }: MapEventsProps
   }, []);
 
   useEffect(() => {
-    saveEvents(events);
-  }, [events]);
+    let isMounted = true;
+
+    const loadFromApi = async () => {
+      try {
+        setLoadError(null);
+        const response = await fetch("/api/events", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+
+        const data = (await response.json()) as Event[];
+        if (isMounted) {
+          setEvents(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (isMounted) {
+          setLoadError("Failed to load events.");
+        }
+      }
+    };
+
+    void loadFromApi();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (status === "success" && coords) {
@@ -104,9 +133,21 @@ export default function MapEvents({ initialCenter, initialZoom }: MapEventsProps
 
   const mapStyle = useMemo(() => ({ height: "100%", width: "100%" }), []);
 
-  const handleDeleteEvent = (id: string) => {
-    setEvents((prev) => prev.filter((event) => event.id !== id));
-    setSelectedEventId((prev) => (prev === id ? undefined : prev));
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      const response = await fetch(`/api/events/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      setEvents((prev) => prev.filter((event) => event.id !== id));
+      setSelectedEventId((prev) => (prev === id ? undefined : prev));
+    } catch {
+      // No-op: keep UI stable if API delete fails.
+    }
   };
 
   return (
@@ -118,6 +159,11 @@ export default function MapEvents({ initialCenter, initialZoom }: MapEventsProps
       >
         Use my location
       </button>
+      {loadError ? (
+        <p className="absolute left-3 top-3 z-[1000] rounded bg-white px-2 py-1 text-xs text-red-600 shadow">
+          {loadError}
+        </p>
+      ) : null}
       <MapContainer center={mapCenter} style={mapStyle} zoom={initialZoom}>
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
