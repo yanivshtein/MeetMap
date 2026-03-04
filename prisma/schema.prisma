@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id     String  @id @default(cuid())
+  name   String?
+  email  String? @unique
+  image  String?
+  events Event[]
+}
+
 model Event {
   id           String  @id
   title        String
@@ -16,7 +24,10 @@ model Event {
   lat          Float
   lng          Float
   createdAtISO String
+  userId       String?
+  user         User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([createdAtISO])
   @@index([lat, lng])
+  @@index([userId])
 }

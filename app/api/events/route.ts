@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAuthSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,31 @@ type CreateEventBody = {
   lng?: unknown;
 };
 
+function getSessionUser(session: Awaited<ReturnType<typeof getAuthSession>>) {
+  const user = session?.user as { id?: string; email?: string } | undefined;
+  return user;
+}
+
+async function resolveUserId(
+  session: Awaited<ReturnType<typeof getAuthSession>>,
+) {
+  const user = getSessionUser(session);
+
+  if (user?.id) {
+    return user.id;
+  }
+
+  if (user?.email) {
+    const dbUser = await db.user.findUnique({
+      where: { email: user.email },
+      select: { id: true },
+    });
+    return dbUser?.id;
+  }
+
+  return undefined;
+}
+
 export async function GET() {
   const events = await db.event.findMany({
     orderBy: {
@@ -23,6 +49,24 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const session = await getAuthSession();
+  const userId = await resolveUserId(session);
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const existingCount = await db.event.count({
+    where: { userId },
+  });
+
+  if (existingCount >= 10) {
+    return NextResponse.json(
+      { error: "Event limit reached. You can create up to 10 events." },
+      { status: 403 },
+    );
+  }
+
   let body: CreateEventBody;
 
   try {
@@ -72,6 +116,7 @@ export async function POST(request: Request) {
       dateISO: dateISO || null,
       lat,
       lng,
+      userId,
       createdAtISO: new Date().toISOString(),
     },
   });
