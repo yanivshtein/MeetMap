@@ -33,6 +33,9 @@ export default function Navbar() {
         <nav className="flex items-center gap-2">
           <NavLink href="/" label="Map" />
           <NavLink href="/create" label="Create" />
+          {status === "authenticated" ? (
+            <NavLink href="/my-events" label="My Events" />
+          ) : null}
 
           {status === "authenticated" ? (
             <>

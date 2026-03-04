@@ -1,11 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  CATEGORY_GROUPS,
+  type EventCategory,
+} from "@/src/lib/eventCategories";
 
 type LatLng = { lat: number; lng: number };
 
 type FormErrors = {
   title?: string;
+  customCategoryTitle?: string;
   address?: string;
   date?: string;
   location?: string;
@@ -57,6 +62,8 @@ export default function CreateEventForm({
   onSubmitSuccess,
 }: CreateEventFormProps) {
   const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<EventCategory>("COFFEE");
+  const [customCategoryTitle, setCustomCategoryTitle] = useState("");
   const [address, setAddress] = useState("");
   const [dateLocal, setDateLocal] = useState("");
   const [description, setDescription] = useState("");
@@ -65,6 +72,41 @@ export default function CreateEventForm({
   const [geocodeMessage, setGeocodeMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const getFriendlySubmitError = async (response: Response) => {
+    const rawText = await response.text().catch(() => "");
+    let parsed: { error?: string } | null = null;
+
+    if (rawText) {
+      try {
+        parsed = JSON.parse(rawText) as { error?: string };
+      } catch {
+        parsed = null;
+      }
+    }
+
+    if (parsed?.error) {
+      return parsed.error;
+    }
+
+    if (response.status === 401) {
+      return "You need to sign in before creating an event.";
+    }
+
+    if (response.status === 403) {
+      return "You are not allowed to create this event.";
+    }
+
+    if (response.status === 400) {
+      return "Some event details are invalid. Please review the form and try again.";
+    }
+
+    if (rawText.trim()) {
+      return `Request failed (${response.status}): ${rawText.slice(0, 180)}`;
+    }
+
+    return `Request failed with status ${response.status}.`;
+  };
 
   const locationLabel = useMemo(() => {
     if (!pickedLatLng) {
@@ -80,6 +122,10 @@ export default function CreateEventForm({
 
     const nextErrors: FormErrors = {
       title: validateTitle(title),
+      customCategoryTitle:
+        category === "OTHER" && customCategoryTitle.trim().length < 2
+          ? "Please enter a title for the Other category."
+          : undefined,
       address: validateAddress(address),
       date: validateDateISO(dateLocal),
       location: validateLocation(pickedLatLng),
@@ -87,6 +133,7 @@ export default function CreateEventForm({
 
     const hasError = Boolean(
       nextErrors.title ||
+        nextErrors.customCategoryTitle ||
         nextErrors.address ||
         nextErrors.date ||
         nextErrors.location,
@@ -107,6 +154,9 @@ export default function CreateEventForm({
         },
         body: JSON.stringify({
           title: title.trim(),
+          category,
+          customCategoryTitle:
+            category === "OTHER" ? customCategoryTitle.trim() : undefined,
           address: address.trim() || undefined,
           description: description.trim() || undefined,
           dateISO,
@@ -116,17 +166,18 @@ export default function CreateEventForm({
       });
 
       if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        setSubmitError(data?.error ?? "Failed to create event. Please try again.");
+        setSubmitError(await getFriendlySubmitError(response));
         return;
       }
 
       setErrors({});
       onSubmitSuccess();
-    } catch {
-      setSubmitError("Failed to create event. Please try again.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown network error";
+      setSubmitError(
+        `Could not reach the server. Check your connection and try again. (${message})`,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -143,12 +194,9 @@ export default function CreateEventForm({
     setGeocodeMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/geocode?q=${encodeURIComponent(trimmed)}`,
-        {
-          method: "GET",
-        },
-      );
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, {
+        method: "GET",
+      });
 
       if (!response.ok) {
         setGeocodeMessage("Address not found. Try a more specific address.");
@@ -198,6 +246,49 @@ export default function CreateEventForm({
           value={title}
         />
         {errors.title ? <p className="mt-1 text-sm text-red-600">{errors.title}</p> : null}
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium" htmlFor="category">
+          Category
+        </label>
+        <select
+          className="w-full rounded-md border px-3 py-2 text-sm"
+          id="category"
+          onChange={(e) => {
+            const nextCategory = e.target.value as EventCategory;
+            setCategory(nextCategory);
+            if (nextCategory !== "OTHER") {
+              setCustomCategoryTitle("");
+            }
+          }}
+          value={category}
+        >
+          {CATEGORY_GROUPS.map((group) => (
+            <optgroup key={group.group} label={group.group}>
+              {group.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.emoji} {option.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        {category === "OTHER" ? (
+          <div className="mt-2">
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              maxLength={60}
+              onChange={(e) => setCustomCategoryTitle(e.target.value)}
+              placeholder="Enter category title"
+              type="text"
+              value={customCategoryTitle}
+            />
+            {errors.customCategoryTitle ? (
+              <p className="mt-1 text-sm text-red-600">{errors.customCategoryTitle}</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div>

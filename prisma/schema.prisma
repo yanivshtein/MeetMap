@@ -17,6 +17,8 @@ model User {
 
 model Event {
   id           String  @id
+  category     String  @default("COFFEE")
+  customCategoryTitle String?
   title        String
   description  String?
   address      String?
@@ -29,5 +31,7 @@ model Event {
 
   @@index([createdAtISO])
   @@index([lat, lng])
+  @@index([lat])
+  @@index([lng])
   @@index([userId])
 }
