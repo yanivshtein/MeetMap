@@ -20,6 +20,18 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const emitUnreadCount = (count: number) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("notifications:updated", {
+        detail: { unreadCount: count },
+      }),
+    );
+  };
+
   const getApiErrorMessage = async (
     response: Response,
     fallback: string,
@@ -65,7 +77,9 @@ export default function NotificationsPage() {
       }
 
       const data = (await response.json()) as NotificationItem[];
-      setNotifications(Array.isArray(data) ? data : []);
+      const next = Array.isArray(data) ? data : [];
+      setNotifications(next);
+      emitUnreadCount(next.filter((item) => !item.isRead).length);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -105,6 +119,17 @@ export default function NotificationsPage() {
     }
 
     setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    emitUnreadCount(0);
+  };
+
+  const markSingleRead = async (id: string) => {
+    await fetch("/api/notifications/mark-read", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ids: [id] }),
+    });
   };
 
   if (status === "loading") {
@@ -168,7 +193,24 @@ export default function NotificationsPage() {
             <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
               <span>{new Date(notification.createdAt).toLocaleString()}</span>
               {notification.eventId ? (
-                <Link className="text-blue-700 underline" href={`/events/${notification.eventId}`}>
+                <Link
+                  className="text-blue-700 underline"
+                  href={`/events/${notification.eventId}`}
+                  onClick={() => {
+                    if (notification.isRead) {
+                      return;
+                    }
+
+                    const next = notifications.map((item) =>
+                      item.id === notification.id
+                        ? { ...item, isRead: true }
+                        : item,
+                    );
+                    setNotifications(next);
+                    emitUnreadCount(next.filter((item) => !item.isRead).length);
+                    void markSingleRead(notification.id);
+                  }}
+                >
                   Open event
                 </Link>
               ) : null}

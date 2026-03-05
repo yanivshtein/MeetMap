@@ -119,6 +119,12 @@ export default function MyEventsPage() {
                     >
                       Edit
                     </Link>
+                    <Link
+                      className="rounded bg-blue-700 px-2 py-1 text-white"
+                      href={`/events/${event.id}/manage`}
+                    >
+                      Manage Requests
+                    </Link>
                     <button
                       className="rounded bg-red-600 px-2 py-1 text-white"
                       onClick={() => {

@@ -25,6 +25,15 @@ type ContactResponse =
     };
 
 type AttendanceStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+type AttendeeItem = {
+  id: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  };
+};
 
 function toDigitsOnly(value: string) {
   return value.replace(/\D/g, "");
@@ -50,6 +59,9 @@ export default function EventDetailsPage() {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [attendanceActionLoading, setAttendanceActionLoading] = useState(false);
+  const [attendees, setAttendees] = useState<AttendeeItem[]>([]);
+  const [attendeesLoading, setAttendeesLoading] = useState(false);
+  const [attendeesError, setAttendeesError] = useState<string | null>(null);
 
   const getApiErrorMessage = async (
     response: Response,
@@ -161,6 +173,42 @@ export default function EventDetailsPage() {
     }
   }, [eventId, isAuthenticated]);
 
+  const loadAttendees = useCallback(async () => {
+    if (!isAuthenticated || !eventId) {
+      setAttendees([]);
+      setAttendeesError(null);
+      return;
+    }
+
+    setAttendeesLoading(true);
+    setAttendeesError(null);
+    try {
+      const response = await fetch(`/api/events/${eventId}/attendees`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await getApiErrorMessage(response, "Failed to load attendees."),
+        );
+      }
+
+      const data = (await response.json()) as {
+        attendees?: AttendeeItem[];
+      };
+      setAttendees(Array.isArray(data.attendees) ? data.attendees : []);
+    } catch (attendeesLoadError) {
+      setAttendeesError(
+        attendeesLoadError instanceof Error
+          ? attendeesLoadError.message
+          : "Failed to load attendees.",
+      );
+    } finally {
+      setAttendeesLoading(false);
+    }
+  }, [eventId, isAuthenticated]);
+
   useEffect(() => {
     if (!eventId) {
       setError("Event not found.");
@@ -207,6 +255,10 @@ export default function EventDetailsPage() {
   useEffect(() => {
     void loadAttendanceStatus();
   }, [loadAttendanceStatus]);
+
+  useEffect(() => {
+    void loadAttendees();
+  }, [loadAttendees]);
 
   const isOwner = Boolean(userId && event?.userId && userId === event.userId);
   const categoryDisplay = useMemo(() => {
@@ -294,7 +346,7 @@ export default function EventDetailsPage() {
         setAttendanceStatus("PENDING");
       }
 
-      await Promise.all([loadAttendanceStatus(), loadContact()]);
+      await Promise.all([loadAttendanceStatus(), loadContact(), loadAttendees()]);
     } catch (requestError) {
       setAttendanceError(
         requestError instanceof Error
@@ -331,7 +383,7 @@ export default function EventDetailsPage() {
         );
       }
 
-      await Promise.all([loadAttendanceStatus(), loadContact()]);
+      await Promise.all([loadAttendanceStatus(), loadContact(), loadAttendees()]);
     } catch (cancelError) {
       setAttendanceError(
         cancelError instanceof Error
@@ -591,6 +643,43 @@ export default function EventDetailsPage() {
             ) : null}
           </div>
         )}
+      </section>
+
+      <section className="mt-4 rounded-xl border p-4">
+        <h2 className="text-lg font-semibold">Attendees</h2>
+        {!isAuthenticated ? (
+          <p className="mt-2 text-sm text-gray-700">
+            Sign in to see attendees.
+          </p>
+        ) : attendeesLoading ? (
+          <p className="mt-2 text-sm text-gray-600">Loading attendees...</p>
+        ) : attendees.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-600">No attendees yet.</p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {attendees.map((item) => (
+              <li className="flex items-center gap-2" key={item.id}>
+                {item.user.image ? (
+                  <img
+                    alt={item.user.name ?? "Attendee"}
+                    className="h-8 w-8 rounded-full object-cover"
+                    src={item.user.image}
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-sm">
+                    {(item.user.name?.[0] ?? "?").toUpperCase()}
+                  </div>
+                )}
+                <span className="text-sm">
+                  {item.user.name?.trim() || "Anonymous user"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {attendeesError ? (
+          <p className="mt-2 text-sm text-red-600">{attendeesError}</p>
+        ) : null}
       </section>
     </main>
   );

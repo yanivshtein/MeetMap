@@ -63,11 +63,11 @@ export default function HomePage() {
         setEvents(data);
         setSelectedEventId((prev) => {
           if (!prev) {
-            return data[0]?.id ?? null;
+            return null;
           }
 
           const stillExists = data.some((event) => event.id === prev);
-          return stillExists ? prev : (data[0]?.id ?? null);
+          return stillExists ? prev : null;
         });
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {

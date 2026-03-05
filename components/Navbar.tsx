@@ -55,14 +55,28 @@ export default function Navbar() {
       }
     };
 
+    const onNotificationsUpdated = (
+      event: Event,
+    ) => {
+      const customEvent = event as CustomEvent<{ unreadCount?: number }>;
+      if (typeof customEvent.detail?.unreadCount === "number") {
+        setUnreadCount(customEvent.detail.unreadCount);
+        return;
+      }
+
+      void loadUnread();
+    };
+
     void loadUnread();
     const timerId = setInterval(() => {
       void loadUnread();
     }, 30_000);
+    window.addEventListener("notifications:updated", onNotificationsUpdated);
 
     return () => {
       cancelled = true;
       clearInterval(timerId);
+      window.removeEventListener("notifications:updated", onNotificationsUpdated);
     };
   }, [status]);
 
