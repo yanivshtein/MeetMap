@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/src/lib/auth";
+import { isValidCity } from "@/src/lib/cities";
 import {
   isValidContactMethod,
   isValidContactVisibility,
@@ -11,6 +12,7 @@ type UpdateEventBody = {
   category?: unknown;
   customCategoryTitle?: unknown;
   title?: unknown;
+  city?: unknown;
   description?: unknown;
   address?: unknown;
   dateISO?: unknown;
@@ -109,6 +111,7 @@ export async function PUT(
     }
 
     const title = typeof body.title === "string" ? body.title.trim() : "";
+    const city = typeof body.city === "string" ? body.city.trim() : "";
     const category =
       typeof body.category === "string" ? body.category.trim() : "";
     const customCategoryTitle =
@@ -136,6 +139,19 @@ export async function PUT(
     if (title.length < 2) {
       return NextResponse.json(
         { error: "Title must be at least 2 characters." },
+        { status: 400 },
+      );
+    }
+
+    if (city.length < 2) {
+      return NextResponse.json(
+        { error: "City is required." },
+        { status: 400 },
+      );
+    }
+    if (!isValidCity(city)) {
+      return NextResponse.json(
+        { error: "Please choose a city from the list." },
         { status: 400 },
       );
     }
@@ -207,6 +223,7 @@ export async function PUT(
         category,
         customCategoryTitle: category === "OTHER" ? customCategoryTitle : null,
         title,
+        city,
         description: description || null,
         address: address || null,
         dateISO: dateISO || null,

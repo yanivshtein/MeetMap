@@ -2,6 +2,13 @@
 
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+import CityAutocomplete from "@/src/components/CityAutocomplete";
+import { isValidCity } from "@/src/lib/cities";
+import {
+  CATEGORY_GROUPS,
+  type EventCategory,
+  isValidCategory,
+} from "@/src/lib/eventCategories";
 import { useSessionClient } from "@/src/lib/sessionClient";
 
 function isValidPhone(value: string) {
@@ -11,6 +18,11 @@ function isValidPhone(value: string) {
 export default function SettingsPage() {
   const { status, isAuthenticated } = useSessionClient();
   const [phone, setPhone] = useState("");
+  const [homeTown, setHomeTown] = useState("");
+  const [homeTownSelected, setHomeTownSelected] = useState(true);
+  const [interestedCategories, setInterestedCategories] = useState<EventCategory[]>(
+    [],
+  );
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +77,22 @@ export default function SettingsPage() {
           );
         }
 
-        const data = (await response.json()) as { phone?: string | null };
+        const data = (await response.json()) as {
+          phone?: string | null;
+          homeTown?: string | null;
+          interestedCategories?: string[];
+        };
         setPhone(data.phone ?? "");
+        const nextHomeTown = data.homeTown ?? "";
+        setHomeTown(nextHomeTown);
+        setHomeTownSelected(!nextHomeTown || isValidCity(nextHomeTown));
+        setInterestedCategories(
+          Array.isArray(data.interestedCategories)
+            ? data.interestedCategories.filter((item): item is EventCategory =>
+                isValidCategory(item),
+              )
+            : [],
+        );
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -90,17 +116,26 @@ export default function SettingsPage() {
       setError("Phone must contain only + and digits, length 7-20.");
       return;
     }
+    if (homeTown.trim() && (!homeTownSelected || !isValidCity(homeTown))) {
+      setError("Please choose a home town from the list.");
+      return;
+    }
 
     setSaving(true);
     try {
+      const payload = {
+        phone: trimmed || null,
+        homeTown: homeTown.trim() || null,
+        interestedCategories,
+      };
+
       const response = await fetch("/api/me", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phone: trimmed || null }),
+        body: JSON.stringify(payload),
       });
-
       if (!response.ok) {
         setError(await getApiErrorMessage(response, "Failed to save profile."));
         return;
@@ -159,6 +194,61 @@ export default function SettingsPage() {
         <p className="mt-1 text-xs text-gray-500">
           Used when an event contact method is Organizer phone.
         </p>
+
+        <div className="mt-4">
+          <CityAutocomplete
+            label="Home town"
+            onChange={setHomeTown}
+            onSelectionChange={setHomeTownSelected}
+            placeholder="Search city"
+            selected={homeTownSelected}
+            value={homeTown}
+          />
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Get notifications when new events matching your interests are created in your town.
+        </p>
+
+        <div className="mt-4">
+          <p className="mb-2 block text-sm font-medium">Interested categories</p>
+          <div className="max-h-56 space-y-3 overflow-y-auto rounded-md border p-3">
+            {CATEGORY_GROUPS.map((group) => (
+              <div key={group.group}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {group.group}
+                </p>
+                <div className="mt-1 space-y-1">
+                  {group.options.map((option) => {
+                    const checked = interestedCategories.includes(option.value);
+                    return (
+                      <label
+                        className="flex items-center gap-2 text-sm"
+                        key={option.value}
+                      >
+                        <input
+                          checked={checked}
+                          onChange={(e) => {
+                            setInterestedCategories((prev) => {
+                              if (e.target.checked) {
+                                return [...prev, option.value];
+                              }
+
+                              return prev.filter((item) => item !== option.value);
+                            });
+                          }}
+                          type="checkbox"
+                        />
+                        <span>
+                          {option.emoji} {option.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <button
           className="mt-3 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"

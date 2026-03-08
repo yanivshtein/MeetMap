@@ -91,6 +91,9 @@ export default function Navbar() {
           {status === "authenticated" ? (
             <NavLink href="/my-events" label="My Events" />
           ) : null}
+          {status === "authenticated" ? (
+            <NavLink href="/joined-events" label="Joined Events" />
+          ) : null}
           {status === "authenticated" ? <NavLink href="/settings" label="Settings" /> : null}
           {status === "authenticated" ? (
             <Link

@@ -12,6 +12,7 @@ export type Event = {
   contactVisibility: ContactVisibility;
   whatsappInviteUrl?: string;
   title: string;
+  city: string;
   userId?: string;
   user?: {
     id: string;

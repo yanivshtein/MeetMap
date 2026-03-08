@@ -13,6 +13,8 @@ model User {
   email       String?      @unique
   image       String?
   phone       String?
+  homeTown    String?
+  interestedCategories String[] @default([])
   events      Event[]
   attendances Attendance[]
   joinRequests JoinRequest[]
@@ -26,6 +28,7 @@ model Event {
   title               String
   description         String?
   address             String?
+  city                String
   dateISO             String?
   contactMethod       String       @default("NONE")
   contactVisibility   String       @default("SIGNED_IN_ONLY")

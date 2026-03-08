@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import CityAutocomplete from "@/src/components/CityAutocomplete";
+import { isValidCity } from "@/src/lib/cities";
 import {
   CONTACT_METHOD_OPTIONS,
   CONTACT_VISIBILITY_OPTIONS,
@@ -58,6 +60,8 @@ export default function EditEventPage() {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
+  const [city, setCity] = useState("");
+  const [citySelected, setCitySelected] = useState(false);
   const [category, setCategory] = useState<EventCategory>("COFFEE");
   const [customCategoryTitle, setCustomCategoryTitle] = useState("");
   const [address, setAddress] = useState("");
@@ -102,6 +106,8 @@ export default function EditEventPage() {
 
         setEvent(found);
         setTitle(found.title);
+        setCity(found.city);
+        setCitySelected(isValidCity(found.city));
         setCategory(found.category);
         setCustomCategoryTitle(found.customCategoryTitle ?? "");
         setAddress(found.address ?? "");
@@ -158,6 +164,14 @@ export default function EditEventPage() {
       setSubmitError("Title must be at least 2 characters.");
       return;
     }
+    if (city.trim().length < 2) {
+      setSubmitError("City is required.");
+      return;
+    }
+    if (!citySelected || !isValidCity(city)) {
+      setSubmitError("Please choose a city from the list.");
+      return;
+    }
     if (category === "OTHER" && customCategoryTitle.trim().length < 2) {
       setSubmitError("Please enter a title for the Other category.");
       return;
@@ -188,6 +202,7 @@ export default function EditEventPage() {
         },
         body: JSON.stringify({
           title: title.trim(),
+          city: city.trim(),
           category,
           customCategoryTitle:
             category === "OTHER" ? customCategoryTitle.trim() : undefined,
@@ -335,6 +350,17 @@ export default function EditEventPage() {
                 onChange={(e) => setTitle(e.target.value)}
                 type="text"
                 value={title}
+              />
+            </div>
+
+            <div>
+              <CityAutocomplete
+                label="City"
+                onChange={setCity}
+                onSelectionChange={setCitySelected}
+                required
+                selected={citySelected}
+                value={city}
               />
             </div>
 

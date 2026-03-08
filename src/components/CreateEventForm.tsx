@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import CityAutocomplete from "@/src/components/CityAutocomplete";
+import { isValidCity } from "@/src/lib/cities";
 import {
   CONTACT_METHOD_OPTIONS,
   CONTACT_VISIBILITY_OPTIONS,
@@ -16,6 +18,7 @@ type LatLng = { lat: number; lng: number };
 
 type FormErrors = {
   title?: string;
+  city?: string;
   customCategoryTitle?: string;
   address?: string;
   date?: string;
@@ -33,6 +36,16 @@ type CreateEventFormProps = {
 function validateTitle(title: string): string | undefined {
   if (title.trim().length < 2) {
     return "Title must be at least 2 characters.";
+  }
+  return undefined;
+}
+
+function validateCity(city: string): string | undefined {
+  if (city.trim().length < 2) {
+    return "City is required.";
+  }
+  if (!isValidCity(city)) {
+    return "Please choose a city from the list.";
   }
   return undefined;
 }
@@ -94,6 +107,8 @@ export default function CreateEventForm({
   onSubmitSuccess,
 }: CreateEventFormProps) {
   const [title, setTitle] = useState("");
+  const [city, setCity] = useState("");
+  const [citySelected, setCitySelected] = useState(false);
   const [category, setCategory] = useState<EventCategory>("COFFEE");
   const [customCategoryTitle, setCustomCategoryTitle] = useState("");
   const [address, setAddress] = useState("");
@@ -151,6 +166,10 @@ export default function CreateEventForm({
 
     const nextErrors: FormErrors = {
       title: validateTitle(title),
+      city:
+        !citySelected && city.trim().length > 0
+          ? "Please choose a city from the list."
+          : validateCity(city),
       customCategoryTitle:
         category === "OTHER" && customCategoryTitle.trim().length < 2
           ? "Please enter a title for the Other category."
@@ -167,6 +186,7 @@ export default function CreateEventForm({
 
     const hasError = Boolean(
       nextErrors.title ||
+        nextErrors.city ||
         nextErrors.customCategoryTitle ||
         nextErrors.address ||
         nextErrors.date ||
@@ -188,6 +208,7 @@ export default function CreateEventForm({
         },
         body: JSON.stringify({
           title: title.trim(),
+          city: city.trim(),
           category,
           customCategoryTitle:
             category === "OTHER" ? customCategoryTitle.trim() : undefined,
@@ -286,6 +307,18 @@ export default function CreateEventForm({
           value={title}
         />
         {errors.title ? <p className="mt-1 text-sm text-red-600">{errors.title}</p> : null}
+      </div>
+
+      <div>
+        <CityAutocomplete
+          label="City"
+          onChange={setCity}
+          onSelectionChange={setCitySelected}
+          required
+          selected={citySelected}
+          value={city}
+        />
+        {errors.city ? <p className="mt-1 text-sm text-red-600">{errors.city}</p> : null}
       </div>
 
       <div>

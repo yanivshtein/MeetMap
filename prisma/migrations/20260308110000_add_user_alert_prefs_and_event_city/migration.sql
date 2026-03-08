@@ -1,0 +1,7 @@
+ALTER TABLE "User"
+ADD COLUMN "homeTown" TEXT,
+ADD COLUMN "interestedCategories" TEXT[] DEFAULT ARRAY[]::TEXT[],
+ADD COLUMN "emailAlertsEnabled" BOOLEAN NOT NULL DEFAULT true;
+
+ALTER TABLE "Event"
+ADD COLUMN "city" TEXT NOT NULL DEFAULT '';

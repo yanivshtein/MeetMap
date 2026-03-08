@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/src/lib/auth";
+import { isValidCity } from "@/src/lib/cities";
 import { db } from "@/src/lib/db";
+import { isValidCategory, type EventCategory } from "@/src/lib/eventCategories";
 
 type MeBody = {
   phone?: unknown;
+  homeTown?: unknown;
+  interestedCategories?: unknown;
 };
 
 function getSessionUser(session: Awaited<ReturnType<typeof getAuthSession>>) {
@@ -45,11 +49,17 @@ export async function GET() {
 
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { phone: true },
+      select: {
+        phone: true,
+        homeTown: true,
+        interestedCategories: true,
+      },
     });
 
     return NextResponse.json({
       phone: user?.phone ?? null,
+      homeTown: user?.homeTown ?? null,
+      interestedCategories: user?.interestedCategories ?? [],
     });
   } catch (error) {
     const message =
@@ -83,9 +93,34 @@ export async function PUT(request: Request) {
     }
 
     const rawPhone = typeof body.phone === "string" ? body.phone.trim() : "";
+    const rawHomeTown =
+      typeof body.homeTown === "string" ? body.homeTown.trim() : "";
+    const rawInterestedCategories = Array.isArray(body.interestedCategories)
+      ? body.interestedCategories.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : [];
+    const interestedCategories = rawInterestedCategories.filter(
+      (item): item is EventCategory => isValidCategory(item),
+    );
+
     if (rawPhone && !isValidPhone(rawPhone)) {
       return NextResponse.json(
         { error: "Phone must contain only + and digits, length 7-20." },
+        { status: 400 },
+      );
+    }
+
+    if (rawInterestedCategories.length !== interestedCategories.length) {
+      return NextResponse.json(
+        { error: "Interested categories contain invalid values." },
+        { status: 400 },
+      );
+    }
+
+    if (rawHomeTown && !isValidCity(rawHomeTown)) {
+      return NextResponse.json(
+        { error: "Please choose a home town from the list." },
         { status: 400 },
       );
     }
@@ -94,14 +129,20 @@ export async function PUT(request: Request) {
       where: { id: userId },
       data: {
         phone: rawPhone || null,
+        homeTown: rawHomeTown || null,
+        interestedCategories,
       },
       select: {
         phone: true,
+        homeTown: true,
+        interestedCategories: true,
       },
     });
 
     return NextResponse.json({
       phone: user.phone ?? null,
+      homeTown: user.homeTown ?? null,
+      interestedCategories: user.interestedCategories,
     });
   } catch (error) {
     const message =

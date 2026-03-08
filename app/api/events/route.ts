@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { getAuthSession } from "@/src/lib/auth";
+import { isValidCity } from "@/src/lib/cities";
 import {
   isValidContactMethod,
   isValidContactVisibility,
 } from "@/src/lib/contactMethods";
-import { isValidCategory } from "@/src/lib/eventCategories";
+import {
+  getCategoryDisplay,
+  isValidCategory,
+} from "@/src/lib/eventCategories";
 import { db } from "@/src/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +18,7 @@ type CreateEventBody = {
   category?: unknown;
   customCategoryTitle?: unknown;
   title?: unknown;
+  city?: unknown;
   description?: unknown;
   address?: unknown;
   dateISO?: unknown;
@@ -192,6 +197,7 @@ export async function POST(request: Request) {
     }
 
     const title = typeof body.title === "string" ? body.title.trim() : "";
+    const city = typeof body.city === "string" ? body.city.trim() : "";
     const category =
       typeof body.category === "string" ? body.category.trim() : "";
     const customCategoryTitle =
@@ -219,6 +225,19 @@ export async function POST(request: Request) {
     if (title.length < 2) {
       return NextResponse.json(
         { error: "Title must be at least 2 characters." },
+        { status: 400 },
+      );
+    }
+
+    if (city.length < 2) {
+      return NextResponse.json(
+        { error: "City is required." },
+        { status: 400 },
+      );
+    }
+    if (!isValidCity(city)) {
+      return NextResponse.json(
+        { error: "Please choose a city from the list." },
         { status: 400 },
       );
     }
@@ -293,6 +312,7 @@ export async function POST(request: Request) {
         category,
         customCategoryTitle: category === "OTHER" ? customCategoryTitle : null,
         title,
+        city,
         description: description || null,
         address: address || null,
         dateISO: dateISO || null,
@@ -306,6 +326,56 @@ export async function POST(request: Request) {
         createdAtISO: new Date().toISOString(),
       },
     });
+
+    const matchingUsers = await db.user.findMany({
+      where: {
+        id: {
+          not: userId,
+        },
+        homeTown: {
+          equals: city,
+          mode: "insensitive",
+        },
+        interestedCategories: {
+          has: category,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (matchingUsers.length > 0) {
+      const categoryLabel = getCategoryDisplay(
+        category,
+        category === "OTHER" ? customCategoryTitle : undefined,
+      ).label;
+
+      await Promise.all(
+        matchingUsers.map(async (matchingUser) => {
+          try {
+            await db.notification.create({
+              data: {
+                userId: matchingUser.id,
+                type: "NEW_MATCHING_EVENT",
+                eventId: event.id,
+                actorId: userId,
+                message: `A new ${categoryLabel} event was created in ${event.city}`,
+              },
+            });
+          } catch (notificationError) {
+            console.error("Failed to create matching event notification", {
+              userId: matchingUser.id,
+              eventId: event.id,
+              error:
+                notificationError instanceof Error
+                  ? notificationError.message
+                  : String(notificationError),
+            });
+          }
+        }),
+      );
+    }
 
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
