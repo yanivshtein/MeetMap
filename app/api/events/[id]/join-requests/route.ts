@@ -40,7 +40,7 @@ export async function POST(
     const { id: eventId } = await context.params;
     const event = await db.event.findUnique({
       where: { id: eventId },
-      select: { id: true, title: true, userId: true },
+      select: { id: true, title: true, userId: true, autoApprove: true },
     });
     if (!event) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -79,6 +79,39 @@ export async function POST(
         { status: "PENDING", message: "Already requested." },
         { status: 200 },
       );
+    }
+
+    if (event.autoApprove) {
+      await db.attendance.upsert({
+        where: {
+          eventId_userId: {
+            eventId,
+            userId,
+          },
+        },
+        update: {},
+        create: {
+          eventId,
+          userId,
+        },
+      });
+
+      if (existing) {
+        await db.joinRequest.update({
+          where: { id: existing.id },
+          data: { status: "APPROVED" },
+        });
+      } else {
+        await db.joinRequest.create({
+          data: {
+            eventId,
+            userId,
+            status: "APPROVED",
+          },
+        });
+      }
+
+      return NextResponse.json({ status: "APPROVED" });
     }
 
     if (existing?.status === "REJECTED") {

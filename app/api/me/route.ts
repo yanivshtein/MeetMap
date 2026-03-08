@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/src/lib/auth";
-import { isValidCity } from "@/src/lib/cities";
+import { normalizeCity } from "@/src/lib/cities";
 import { db } from "@/src/lib/db";
 import { isValidCategory, type EventCategory } from "@/src/lib/eventCategories";
 
@@ -118,7 +118,8 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (rawHomeTown && !isValidCity(rawHomeTown)) {
+    const normalizedHomeTown = rawHomeTown ? normalizeCity(rawHomeTown) : null;
+    if (rawHomeTown && !normalizedHomeTown) {
       return NextResponse.json(
         { error: "Please choose a home town from the list." },
         { status: 400 },
@@ -129,7 +130,7 @@ export async function PUT(request: Request) {
       where: { id: userId },
       data: {
         phone: rawPhone || null,
-        homeTown: rawHomeTown || null,
+        homeTown: normalizedHomeTown,
         interestedCategories,
       },
       select: {

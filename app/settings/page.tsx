@@ -151,19 +151,19 @@ export default function SettingsPage() {
 
   if (status === "loading") {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <p className="text-sm text-gray-600">Checking authentication...</p>
+      <main className="app-shell">
+        <p className="body-muted">Checking authentication...</p>
       </main>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="mt-3 text-gray-700">Please sign in to manage your profile.</p>
+      <main className="app-shell page-stack">
+        <h1 className="page-title">Settings</h1>
+        <p className="body-muted">Please sign in to manage your profile.</p>
         <button
-          className="mt-4 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={() => signIn("google", { callbackUrl: "/settings" })}
           type="button"
         >
@@ -174,17 +174,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+    <main className="app-shell page-stack max-w-3xl">
+      <h1 className="page-title">Settings</h1>
 
-      <div className="mt-4 rounded-xl border p-4">
-        {loading ? <p className="text-sm text-gray-600">Loading profile...</p> : null}
+      <div className="ui-card-static">
+        {loading ? <p className="body-muted">Loading profile...</p> : null}
 
-        <label className="mb-1 block text-sm font-medium" htmlFor="phone">
+        <label className="label-base" htmlFor="phone">
           Phone (optional)
         </label>
         <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="input-base"
           id="phone"
           onChange={(e) => setPhone(e.target.value)}
           placeholder="+972501234567"
@@ -210,8 +210,8 @@ export default function SettingsPage() {
         </p>
 
         <div className="mt-4">
-          <p className="mb-2 block text-sm font-medium">Interested categories</p>
-          <div className="max-h-56 space-y-3 overflow-y-auto rounded-md border p-3">
+          <p className="label-base mb-2">Interested categories</p>
+          <div className="max-h-56 space-y-3 overflow-y-auto rounded-lg border border-gray-200 p-3">
             {CATEGORY_GROUPS.map((group) => (
               <div key={group.group}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -251,7 +251,7 @@ export default function SettingsPage() {
         </div>
 
         <button
-          className="mt-3 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          className="btn-primary mt-3"
           disabled={saving}
           onClick={() => {
             void handleSave();
@@ -261,8 +261,8 @@ export default function SettingsPage() {
           {saving ? "Saving..." : "Save"}
         </button>
 
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-        {success ? <p className="mt-2 text-sm text-green-700">{success}</p> : null}
+        {error ? <p className="body-muted mt-2 text-red-600">{error}</p> : null}
+        {success ? <p className="body-muted mt-2 text-green-700">{success}</p> : null}
       </div>
     </main>
   );

@@ -58,19 +58,19 @@ export default function MyEventsPage() {
 
   if (status === "loading") {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <p className="text-sm text-gray-600">Checking authentication...</p>
+      <main className="app-shell">
+        <p className="body-muted">Checking authentication...</p>
       </main>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <h1 className="text-2xl font-semibold">My Events</h1>
-        <p className="mt-3 text-gray-700">Please sign in to view your events.</p>
+      <main className="app-shell page-stack">
+        <h1 className="page-title">My Events</h1>
+        <p className="body-muted">Please sign in to view your events.</p>
         <button
-          className="mt-4 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={() => signIn("google", { callbackUrl: "/my-events" })}
           type="button"
         >
@@ -81,13 +81,13 @@ export default function MyEventsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <h1 className="text-2xl font-semibold">My Events</h1>
+    <main className="app-shell page-stack">
+      <h1 className="page-title">My Events</h1>
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      {loading ? <p className="mt-3 text-sm text-gray-600">Loading...</p> : null}
+      {error ? <p className="body-muted text-red-600">{error}</p> : null}
+      {loading ? <p className="body-muted">Loading...</p> : null}
 
-      <div className="mt-4 overflow-x-auto rounded-xl border">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-left">
             <tr>
@@ -102,7 +102,7 @@ export default function MyEventsPage() {
             {events.map((event) => (
               <tr className="border-t" key={event.id}>
                 <td className="px-4 py-3">
-                  <Link className="text-blue-700 underline" href={`/events/${event.id}`}>
+                  <Link className="text-indigo-700 underline" href={`/events/${event.id}`}>
                     {event.title}
                   </Link>
                 </td>
@@ -114,19 +114,25 @@ export default function MyEventsPage() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Link
-                      className="rounded bg-gray-800 px-2 py-1 text-white"
+                      className="btn-primary !rounded-lg !px-3 !py-1.5"
                       href={`/edit/${event.id}`}
                     >
                       Edit
                     </Link>
                     <Link
-                      className="rounded bg-blue-700 px-2 py-1 text-white"
+                      className="btn-secondary !rounded-lg !px-3 !py-1.5"
+                      href={`/create?duplicate=${event.id}`}
+                    >
+                      Duplicate event
+                    </Link>
+                    <Link
+                      className="btn-primary !rounded-lg !bg-blue-700 !px-3 !py-1.5"
                       href={`/events/${event.id}/manage`}
                     >
                       Manage Requests
                     </Link>
                     <button
-                      className="rounded bg-red-600 px-2 py-1 text-white"
+                      className="btn-primary !rounded-lg !bg-red-600 !px-3 !py-1.5"
                       onClick={() => {
                         void handleDelete(event.id);
                       }}

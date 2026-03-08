@@ -7,6 +7,11 @@ import { useEffect, useMemo, useState } from "react";
 import CityAutocomplete from "@/src/components/CityAutocomplete";
 import { isValidCity } from "@/src/lib/cities";
 import {
+  combineDateAndTimeToISO,
+  splitISOToDateAndTime,
+  TIME_OPTIONS,
+} from "@/src/lib/dateTimeSlots";
+import {
   CONTACT_METHOD_OPTIONS,
   CONTACT_VISIBILITY_OPTIONS,
   type ContactMethod,
@@ -29,25 +34,6 @@ const LocationPickerMap = dynamic(
   },
 );
 
-function toDateTimeLocal(iso?: string) {
-  if (!iso) {
-    return "";
-  }
-
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
 export default function EditEventPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -65,7 +51,8 @@ export default function EditEventPage() {
   const [category, setCategory] = useState<EventCategory>("COFFEE");
   const [customCategoryTitle, setCustomCategoryTitle] = useState("");
   const [address, setAddress] = useState("");
-  const [dateLocal, setDateLocal] = useState("");
+  const [datePart, setDatePart] = useState("");
+  const [timePart, setTimePart] = useState("");
   const [description, setDescription] = useState("");
   const [contactMethod, setContactMethod] = useState<ContactMethod>("NONE");
   const [contactVisibility, setContactVisibility] =
@@ -106,12 +93,16 @@ export default function EditEventPage() {
 
         setEvent(found);
         setTitle(found.title);
-        setCity(found.city);
-        setCitySelected(isValidCity(found.city));
+        setCity(found.city ?? "");
+        setCitySelected(found.city ? isValidCity(found.city) : false);
         setCategory(found.category);
         setCustomCategoryTitle(found.customCategoryTitle ?? "");
         setAddress(found.address ?? "");
-        setDateLocal(toDateTimeLocal(found.dateISO));
+        const { datePart: nextDate, timePart: nextTime } = splitISOToDateAndTime(
+          found.dateISO,
+        );
+        setDatePart(nextDate);
+        setTimePart(nextTime);
         setDescription(found.description ?? "");
         setContactMethod(found.contactMethod ?? "NONE");
         setContactVisibility(found.contactVisibility ?? "SIGNED_IN_ONLY");
@@ -189,7 +180,12 @@ export default function EditEventPage() {
       return;
     }
 
-    const dateISO = dateLocal ? new Date(dateLocal).toISOString() : undefined;
+    if ((datePart && !timePart) || (!datePart && timePart)) {
+      setSubmitError("Choose both date and time.");
+      return;
+    }
+
+    const dateISO = combineDateAndTimeToISO(datePart, timePart);
 
     setSubmitting(true);
     setSubmitError(null);
@@ -286,19 +282,19 @@ export default function EditEventPage() {
 
   if (status === "loading") {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <p className="text-sm text-gray-600">Checking authentication...</p>
+      <main className="app-shell">
+        <p className="body-muted">Checking authentication...</p>
       </main>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <h1 className="text-2xl font-semibold">Edit Event</h1>
-        <p className="mt-3 text-gray-700">Please sign in to edit events.</p>
+      <main className="app-shell page-stack">
+        <h1 className="page-title">Edit Event</h1>
+        <p className="body-muted">Please sign in to edit events.</p>
         <button
-          className="mt-4 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={() => signIn("google", { callbackUrl: `/edit/${params.id}` })}
           type="button"
         >
@@ -310,42 +306,42 @@ export default function EditEventPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <p className="text-sm text-gray-600">Loading event...</p>
+      <main className="app-shell">
+        <p className="body-muted">Loading event...</p>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <p className="text-sm text-red-600">{error}</p>
+      <main className="app-shell">
+        <p className="body-muted text-red-600">{error}</p>
       </main>
     );
   }
 
   if (notAllowed) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <h1 className="text-2xl font-semibold">Edit Event</h1>
+      <main className="app-shell page-stack">
+        <h1 className="page-title">Edit Event</h1>
         <p className="mt-3 text-red-600">Not allowed.</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <h1 className="text-2xl font-semibold">Edit Event</h1>
+    <main className="app-shell page-stack">
+      <h1 className="page-title">Edit Event</h1>
 
-      <section className="mt-6 grid gap-6 md:grid-cols-2">
+      <section className="grid gap-6 md:grid-cols-2">
         <div>
-          <form className="space-y-4 rounded-xl border p-4" onSubmit={handleSubmit}>
+          <form className="ui-card-static space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="title">
+              <label className="label-base" htmlFor="title">
                 Title
               </label>
               <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="input-base"
                 id="title"
                 onChange={(e) => setTitle(e.target.value)}
                 type="text"
@@ -365,11 +361,11 @@ export default function EditEventPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="category">
+              <label className="label-base" htmlFor="category">
                 Category
               </label>
               <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="input-base"
                 id="category"
                 onChange={(e) => {
                   const nextCategory = e.target.value as EventCategory;
@@ -393,7 +389,7 @@ export default function EditEventPage() {
               {category === "OTHER" ? (
                 <div className="mt-2">
                   <input
-                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    className="input-base"
                     maxLength={60}
                     onChange={(e) => setCustomCategoryTitle(e.target.value)}
                     placeholder="Enter category title"
@@ -405,11 +401,11 @@ export default function EditEventPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="address">
+              <label className="label-base" htmlFor="address">
                 Address
               </label>
               <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="input-base"
                 id="address"
                 maxLength={120}
                 onBlur={() => {
@@ -424,7 +420,7 @@ export default function EditEventPage() {
               />
               <div className="mt-2 flex items-center gap-2">
                 <button
-                  className="rounded-md border px-3 py-1 text-sm"
+                  className="btn-secondary !rounded-lg !px-3 !py-1.5"
                   disabled={isGeocoding}
                   onClick={() => {
                     void geocodeAddress();
@@ -451,11 +447,11 @@ export default function EditEventPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="contactMethod">
+              <label className="label-base" htmlFor="contactMethod">
                 Contact method
               </label>
               <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="input-base"
                 id="contactMethod"
                 onChange={(e) => {
                   const value = e.target.value as ContactMethod;
@@ -474,11 +470,11 @@ export default function EditEventPage() {
               </select>
               {contactMethod === "WHATSAPP_GROUP" ? (
                 <div className="mt-2">
-                  <label className="mb-1 block text-sm font-medium" htmlFor="whatsappInviteUrl">
+                  <label className="label-base" htmlFor="whatsappInviteUrl">
                     WhatsApp group invite link
                   </label>
                   <input
-                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    className="input-base"
                     id="whatsappInviteUrl"
                     onChange={(e) => setWhatsappInviteUrl(e.target.value)}
                     placeholder="https://chat.whatsapp.com/..."
@@ -495,11 +491,11 @@ export default function EditEventPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="contactVisibility">
+              <label className="label-base" htmlFor="contactVisibility">
                 Contact visibility
               </label>
               <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="input-base"
                 id="contactVisibility"
                 onChange={(e) =>
                   setContactVisibility(e.target.value as ContactVisibility)
@@ -514,25 +510,52 @@ export default function EditEventPage() {
               </select>
             </div>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="date">
-                Date & Time
-              </label>
-              <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                id="date"
-                onChange={(e) => setDateLocal(e.target.value)}
-                type="datetime-local"
-                value={dateLocal}
-              />
+            <div className="rounded-lg border border-gray-200 p-3">
+              <p className="text-sm font-medium">When</p>
+              <p className="mt-1 text-xs text-gray-600">Choose a date and a start time.</p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="label-base" htmlFor="date">
+                    Date
+                  </label>
+                  <input
+                    className="input-base"
+                    id="date"
+                    onChange={(e) => setDatePart(e.target.value)}
+                    type="date"
+                    value={datePart}
+                  />
+                </div>
+                <div>
+                  <label className="label-base" htmlFor="time">
+                    Time
+                  </label>
+                  <select
+                    className="input-base"
+                    id="time"
+                    onChange={(e) => setTimePart(e.target.value)}
+                    value={timePart}
+                  >
+                    <option value="">Select time</option>
+                    {TIME_OPTIONS.map((timeValue) => (
+                      <option key={timeValue} value={timeValue}>
+                        {timeValue}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Time can be selected only in 15-minute increments.
+              </p>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="description">
+              <label className="label-base" htmlFor="description">
                 Description
               </label>
               <textarea
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="input-base"
                 id="description"
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -545,7 +568,7 @@ export default function EditEventPage() {
             </p>
 
             <button
-              className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+              className="btn-primary"
               disabled={submitting}
               type="submit"
             >
@@ -556,9 +579,9 @@ export default function EditEventPage() {
           </form>
         </div>
 
-        <div className="rounded-xl border p-3">
-          <p className="text-sm text-gray-600">{locationStatusText}</p>
-          <div className="mt-3 h-[360px] overflow-hidden rounded-lg">
+        <div className="ui-card-static p-3">
+          <p className="body-muted">{locationStatusText}</p>
+          <div className="mt-3 h-[360px] overflow-hidden rounded-lg border border-gray-200">
             <LocationPickerMap
               center={[32.0853, 34.7818]}
               onLocationStatusChange={({ status, errorMessage }) => {

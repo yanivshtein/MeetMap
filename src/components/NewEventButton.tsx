@@ -9,21 +9,21 @@ export default function NewEventButton() {
   if (status === "authenticated") {
     return (
       <Link
-        className="inline-flex rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+        className="btn-primary"
         href="/create"
       >
-        + New Event
+        Create activity
       </Link>
     );
   }
 
   return (
     <button
-      className="inline-flex rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+      className="btn-primary"
       onClick={() => signIn("google", { callbackUrl: "/create" })}
       type="button"
     >
-      + New Event
+      Create activity
     </button>
   );
 }

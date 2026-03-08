@@ -49,19 +49,19 @@ export default function JoinedEventsPage() {
 
   if (status === "loading") {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <p className="text-sm text-gray-600">Checking authentication...</p>
+      <main className="app-shell">
+        <p className="body-muted">Checking authentication...</p>
       </main>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        <h1 className="text-2xl font-semibold">Joined Events</h1>
-        <p className="mt-3 text-gray-700">Please sign in to view joined events.</p>
+      <main className="app-shell page-stack">
+        <h1 className="page-title">Joined Events</h1>
+        <p className="body-muted">Please sign in to view joined events.</p>
         <button
-          className="mt-4 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={() => signIn("google", { callbackUrl: "/joined-events" })}
           type="button"
         >
@@ -72,13 +72,13 @@ export default function JoinedEventsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <h1 className="text-2xl font-semibold">Joined Events</h1>
+    <main className="app-shell page-stack">
+      <h1 className="page-title">Joined Events</h1>
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      {loading ? <p className="mt-3 text-sm text-gray-600">Loading...</p> : null}
+      {error ? <p className="body-muted text-red-600">{error}</p> : null}
+      {loading ? <p className="body-muted">Loading...</p> : null}
 
-      <div className="mt-4 overflow-x-auto rounded-xl border">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-left">
             <tr>
@@ -92,7 +92,7 @@ export default function JoinedEventsPage() {
             {events.map((event) => (
               <tr className="border-t" key={event.id}>
                 <td className="px-4 py-3">
-                  <Link className="text-blue-700 underline" href={`/events/${event.id}`}>
+                  <Link className="text-indigo-700 underline" href={`/events/${event.id}`}>
                     {event.title}
                   </Link>
                 </td>

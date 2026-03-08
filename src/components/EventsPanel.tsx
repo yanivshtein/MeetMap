@@ -43,10 +43,10 @@ export default function EventsPanel({
   };
 
   return (
-    <aside className="flex h-full flex-col rounded-xl border bg-white">
-      <div className="space-y-3 border-b p-4">
+    <aside className="flex h-full flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="space-y-3 border-b border-gray-200 p-4">
         <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="input-base"
           onChange={(e) => {
             const next = { q: e.target.value, from, to, category };
             emitFilters(next);
@@ -58,7 +58,7 @@ export default function EventsPanel({
 
         <div className="grid grid-cols-2 gap-2">
           <input
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="input-base"
             onChange={(e) => {
               const next = { q, from: e.target.value, to, category };
               emitFilters(next);
@@ -67,7 +67,7 @@ export default function EventsPanel({
             value={from}
           />
           <input
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="input-base"
             onChange={(e) => {
               const next = { q, from, to: e.target.value, category };
               emitFilters(next);
@@ -78,7 +78,7 @@ export default function EventsPanel({
         </div>
 
         <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="input-base"
           onChange={(e) => {
             const next = { q, from, to, category: e.target.value };
             emitFilters(next);
@@ -114,10 +114,10 @@ export default function EventsPanel({
                 <li key={event.id}>
                   <button
                     className={[
-                      "w-full rounded-lg border p-3 text-left",
+                      "w-full rounded-lg border border-gray-200 p-3 text-left transition",
                       isSelected
-                        ? "border-black bg-gray-50"
-                        : "border-transparent hover:border-gray-200",
+                        ? "border-black bg-gray-50 shadow-sm"
+                        : "hover:border-gray-300 hover:shadow-sm",
                     ].join(" ")}
                     onClick={() => onSelect(event.id)}
                     type="button"

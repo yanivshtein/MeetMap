@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { isValidCity, searchCities } from "@/src/lib/cities";
+import { getCityDisplayLabel, isValidCity, searchCities } from "@/src/lib/cities";
 
 type CityAutocompleteProps = {
   value: string;
@@ -45,14 +45,14 @@ export default function CityAutocomplete({
 
   return (
     <div className="relative">
-      <label className="mb-1 block text-sm font-medium" htmlFor={inputId}>
+      <label className="label-base" htmlFor={inputId}>
         {label}
       </label>
       <input
         autoComplete="off"
         className={[
-          "w-full rounded-md border px-3 py-2 text-sm",
-          showError ? "border-red-500" : "",
+          "input-base",
+          showError ? "border-red-500 focus:border-red-500 focus:ring-red-100" : "",
         ].join(" ")}
         id={inputId}
         onBlur={() => {
@@ -127,7 +127,7 @@ export default function CityAutocomplete({
       ) : null}
 
       {isOpen ? (
-        <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-sm">
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-sm">
           {suggestions.length === 0 ? (
             <p className="px-3 py-2 text-sm text-gray-500">No matching cities</p>
           ) : (
@@ -149,7 +149,7 @@ export default function CityAutocomplete({
                       }}
                       type="button"
                     >
-                      <span>{city}</span>
+                      <span>{getCityDisplayLabel(city)}</span>
                       {isSelected ? <span className="text-green-600">✓</span> : null}
                     </button>
                   </li>

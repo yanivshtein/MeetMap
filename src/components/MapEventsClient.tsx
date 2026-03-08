@@ -9,7 +9,9 @@ type MapEventsClientProps = {
   initialZoom: number;
   events: Event[];
   selectedEventId: string | null;
+  pendingFocusEventId: string | null;
   onSelect: (id: string) => void;
+  onFocusHandled: () => void;
   onDeleted?: (id: string) => void;
   onBoundsChange?: (bounds: MapBounds) => void;
 };
@@ -23,7 +25,9 @@ export default function MapEventsClient({
   initialZoom,
   events,
   selectedEventId,
+  pendingFocusEventId,
   onSelect,
+  onFocusHandled,
   onDeleted,
   onBoundsChange,
 }: MapEventsClientProps) {
@@ -34,7 +38,9 @@ export default function MapEventsClient({
       initialZoom={initialZoom}
       onBoundsChange={onBoundsChange}
       onDeleted={onDeleted}
+      onFocusHandled={onFocusHandled}
       onSelect={onSelect}
+      pendingFocusEventId={pendingFocusEventId}
       selectedEventId={selectedEventId}
     />
   );

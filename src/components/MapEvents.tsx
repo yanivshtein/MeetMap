@@ -30,7 +30,9 @@ type MapEventsProps = {
   initialZoom: number;
   events: Event[];
   selectedEventId: string | null;
+  pendingFocusEventId: string | null;
   onSelect: (id: string) => void;
+  onFocusHandled: () => void;
   onDeleted?: (id: string) => void;
   onBoundsChange?: (bounds: MapBounds) => void;
 };
@@ -44,17 +46,33 @@ export type MapBounds = {
 };
 
 type FocusControllerProps = {
-  selectedEventId: string | null;
-  events: Event[];
+  pendingFocusEventId: string | null;
+  eventsById: ReadonlyMap<string, Event>;
   markerRefs: React.MutableRefObject<Record<string, LeafletMarker | null>>;
+  userMovedMapRef: React.MutableRefObject<boolean>;
+  ignoreNextBoundsFetchRef: React.MutableRefObject<boolean>;
+  onFocusHandled: () => void;
 };
 
 type RecenterControllerProps = {
   target: LatLng | null;
 };
 
+type InitialCenterControllerProps = {
+  events: Event[];
+  mapInitialized: boolean;
+  userHasMovedMap: boolean;
+  onMapInitialized: () => void;
+  ignoreNextBoundsFetchRef: React.MutableRefObject<boolean>;
+};
+
 type BoundsControllerProps = {
   onBoundsChange?: (bounds: MapBounds) => void;
+  ignoreNextBoundsFetchRef: React.MutableRefObject<boolean>;
+};
+
+type InteractionControllerProps = {
+  onUserMoveMap: () => void;
 };
 
 type MapReadyGateProps = {
@@ -80,30 +98,81 @@ function makeClusterIcon(clusterSize: number): DivIcon {
 }
 
 function FocusController({
-  selectedEventId,
-  events,
+  pendingFocusEventId,
+  eventsById,
   markerRefs,
+  userMovedMapRef,
+  ignoreNextBoundsFetchRef,
+  onFocusHandled,
 }: FocusControllerProps) {
   const map = useMap();
 
   useEffect(() => {
-    if (!selectedEventId) {
+    if (!pendingFocusEventId) {
       return;
     }
 
-    const target = events.find((event) => event.id === selectedEventId);
-    if (!target) {
+    if (userMovedMapRef.current) {
+      onFocusHandled();
       return;
     }
 
-    map.flyTo([target.lat, target.lng], map.getZoom(), {
+    const selectedEvent = eventsById.get(pendingFocusEventId);
+    if (!selectedEvent) {
+      onFocusHandled();
+      return;
+    }
+
+    ignoreNextBoundsFetchRef.current = true;
+    map.flyTo([selectedEvent.lat, selectedEvent.lng], map.getZoom(), {
       animate: true,
       duration: 0.5,
     });
 
-    const marker = markerRefs.current[selectedEventId];
+    const marker = markerRefs.current[selectedEvent.id];
     marker?.openPopup();
-  }, [events, map, markerRefs, selectedEventId]);
+    onFocusHandled();
+  }, [
+    eventsById,
+    ignoreNextBoundsFetchRef,
+    map,
+    markerRefs,
+    onFocusHandled,
+    pendingFocusEventId,
+    userMovedMapRef,
+  ]);
+
+  return null;
+}
+
+function InitialCenterController({
+  events,
+  mapInitialized,
+  userHasMovedMap,
+  onMapInitialized,
+  ignoreNextBoundsFetchRef,
+}: InitialCenterControllerProps) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (mapInitialized || userHasMovedMap || events.length === 0) {
+      return;
+    }
+
+    const firstEvent = events[0];
+    ignoreNextBoundsFetchRef.current = true;
+    map.setView([firstEvent.lat, firstEvent.lng], map.getZoom(), {
+      animate: false,
+    });
+    onMapInitialized();
+  }, [
+    events,
+    ignoreNextBoundsFetchRef,
+    map,
+    mapInitialized,
+    onMapInitialized,
+    userHasMovedMap,
+  ]);
 
   return null;
 }
@@ -125,9 +194,39 @@ function RecenterController({ target }: RecenterControllerProps) {
   return null;
 }
 
-function BoundsController({ onBoundsChange }: BoundsControllerProps) {
+function InteractionController({ onUserMoveMap }: InteractionControllerProps) {
+  useMapEvents({
+    dragstart: (event) => {
+      if ("originalEvent" in event && event.originalEvent) {
+        onUserMoveMap();
+      }
+    },
+    movestart: (event) => {
+      if ("originalEvent" in event && event.originalEvent) {
+        onUserMoveMap();
+      }
+    },
+    zoomstart: (event) => {
+      if ("originalEvent" in event && event.originalEvent) {
+        onUserMoveMap();
+      }
+    },
+  });
+
+  return null;
+}
+
+function BoundsController({
+  onBoundsChange,
+  ignoreNextBoundsFetchRef,
+}: BoundsControllerProps) {
   const map = useMapEvents({
     moveend: () => {
+      if (ignoreNextBoundsFetchRef.current) {
+        ignoreNextBoundsFetchRef.current = false;
+        return;
+      }
+
       const bounds = map.getBounds();
       onBoundsChange?.({
         north: bounds.getNorth(),
@@ -137,6 +236,11 @@ function BoundsController({ onBoundsChange }: BoundsControllerProps) {
       });
     },
     zoomend: () => {
+      if (ignoreNextBoundsFetchRef.current) {
+        ignoreNextBoundsFetchRef.current = false;
+        return;
+      }
+
       const bounds = map.getBounds();
       onBoundsChange?.({
         north: bounds.getNorth(),
@@ -189,13 +293,21 @@ export default function MapEvents({
   initialZoom,
   events,
   selectedEventId,
+  pendingFocusEventId,
   onSelect,
+  onFocusHandled,
   onDeleted,
   onBoundsChange,
 }: MapEventsProps) {
   const markerRefs = useRef<Record<string, LeafletMarker | null>>({});
   const { status, coords, requestLocation } = useCurrentLocation();
   const { userId } = useSessionClient();
+  const [mapInitialized, setMapInitialized] = useState(false);
+  const [userHasMovedMap, setUserHasMovedMap] = useState(false);
+  const [recenterTarget, setRecenterTarget] = useState<LatLng | null>(null);
+  const userMovedMapRef = useRef(false);
+  const ignoreNextBoundsFetchRef = useRef(false);
+  const shouldRecenterToCurrentLocationRef = useRef(false);
 
   const mapCenter = useMemo<[number, number]>(() => {
     if (coords) {
@@ -223,6 +335,10 @@ export default function MapEvents({
 
     return fallbackIcon;
   };
+  const eventsById = useMemo(
+    () => new Map(events.map((event) => [event.id, event])),
+    [events],
+  );
 
   const handleDeleteEvent = async (id: string) => {
     try {
@@ -240,11 +356,34 @@ export default function MapEvents({
     }
   };
 
+  const handleUseMyLocation = () => {
+    shouldRecenterToCurrentLocationRef.current = true;
+    requestLocation();
+
+    if (coords) {
+      ignoreNextBoundsFetchRef.current = true;
+      setRecenterTarget(coords);
+      shouldRecenterToCurrentLocationRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    if (
+      status === "success" &&
+      coords &&
+      shouldRecenterToCurrentLocationRef.current
+    ) {
+      ignoreNextBoundsFetchRef.current = true;
+      setRecenterTarget(coords);
+      shouldRecenterToCurrentLocationRef.current = false;
+    }
+  }, [coords, status]);
+
   return (
     <div className="relative h-full w-full">
       <button
         className="absolute right-3 top-3 z-[1000] rounded-md bg-white px-3 py-1 text-xs font-medium shadow"
-        onClick={requestLocation}
+        onClick={handleUseMyLocation}
         type="button"
       >
         Use my location
@@ -256,13 +395,33 @@ export default function MapEvents({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <FocusController
-          events={events}
-          markerRefs={markerRefs}
-          selectedEventId={selectedEventId}
+        <InteractionController
+          onUserMoveMap={() => {
+            userMovedMapRef.current = true;
+            setUserHasMovedMap(true);
+            onFocusHandled();
+          }}
         />
-        <BoundsController onBoundsChange={onBoundsChange} />
-        <RecenterController target={status === "success" ? coords : null} />
+        <InitialCenterController
+          events={events}
+          ignoreNextBoundsFetchRef={ignoreNextBoundsFetchRef}
+          mapInitialized={mapInitialized}
+          onMapInitialized={() => setMapInitialized(true)}
+          userHasMovedMap={userHasMovedMap}
+        />
+        <FocusController
+          eventsById={eventsById}
+          ignoreNextBoundsFetchRef={ignoreNextBoundsFetchRef}
+          markerRefs={markerRefs}
+          onFocusHandled={onFocusHandled}
+          pendingFocusEventId={pendingFocusEventId}
+          userMovedMapRef={userMovedMapRef}
+        />
+        <BoundsController
+          ignoreNextBoundsFetchRef={ignoreNextBoundsFetchRef}
+          onBoundsChange={onBoundsChange}
+        />
+        <RecenterController target={recenterTarget} />
 
         <MapReadyGate>
           <MarkerClusterGroup
@@ -279,6 +438,14 @@ export default function MapEvents({
                 event.category,
                 event.customCategoryTitle,
               );
+              const attendeeCount =
+                event.attendanceCount ?? event._count?.attendances;
+              const formattedDate = event.dateISO
+                ? new Date(event.dateISO).toLocaleString()
+                : null;
+              const displayTitle = event.city
+                ? `${categoryMeta.label} in ${event.city}`
+                : event.title;
 
               return (
                 <Marker
@@ -294,27 +461,32 @@ export default function MapEvents({
                 >
                   <Popup>
                     <div className="space-y-2">
-                      <p className="text-sm text-gray-600">
-                        {categoryMeta.emoji} {categoryMeta.label}
-                      </p>
                       <p
                         className={
                           selectedEventId === event.id
-                            ? "font-semibold text-blue-700"
-                            : "font-semibold"
+                            ? "font-semibold text-indigo-700"
+                            : "font-semibold text-gray-900"
                         }
                       >
-                        {event.title}
+                        {categoryMeta.emoji} {displayTitle}
                       </p>
-                      {event.address ? <p>{event.address}</p> : null}
-                      {event.dateISO ? (
+                      {event.city ? (
+                        <p className="text-sm text-gray-700">📍 {event.city}</p>
+                      ) : null}
+                      {formattedDate ? (
                         <p className="text-sm text-gray-700">
-                          {new Date(event.dateISO).toLocaleString()}
+                          🕒 {formattedDate}
                         </p>
                       ) : null}
+                      {typeof attendeeCount === "number" ? (
+                        <p className="text-sm text-gray-600">
+                          👥 {attendeeCount} attending
+                        </p>
+                      ) : null}
+                      {event.address ? <p className="text-sm">{event.address}</p> : null}
                       {event.description ? <p>{event.description}</p> : null}
                       <Link
-                        className="inline-block text-sm text-blue-700 underline"
+                        className="inline-block text-sm text-indigo-700 underline"
                         href={`/events/${event.id}`}
                       >
                         View details

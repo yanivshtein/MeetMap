@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CityAutocomplete from "@/src/components/CityAutocomplete";
-import { isValidCity } from "@/src/lib/cities";
+import { isValidCity, normalizeCity } from "@/src/lib/cities";
+import { combineDateAndTimeToISO, TIME_OPTIONS } from "@/src/lib/dateTimeSlots";
 import {
   CONTACT_METHOD_OPTIONS,
   CONTACT_VISIBILITY_OPTIONS,
@@ -11,14 +12,15 @@ import {
 } from "@/src/lib/contactMethods";
 import {
   CATEGORY_GROUPS,
+  getCategoryDisplay,
   type EventCategory,
 } from "@/src/lib/eventCategories";
 
 type LatLng = { lat: number; lng: number };
 
 type FormErrors = {
-  title?: string;
   city?: string;
+  customName?: string;
   customCategoryTitle?: string;
   address?: string;
   date?: string;
@@ -30,19 +32,25 @@ type FormErrors = {
 type CreateEventFormProps = {
   pickedLatLng: LatLng | null;
   onPickedLatLngChange: (value: LatLng) => void;
+  onCityChange?: (city: string) => void;
   onSubmitSuccess: () => void;
+  initialValues?: {
+    category?: EventCategory;
+    customName?: string;
+    customCategoryTitle?: string;
+    city?: string;
+    address?: string;
+    description?: string;
+    contactMethod?: ContactMethod;
+    contactVisibility?: ContactVisibility;
+    whatsappInviteUrl?: string;
+    autoApprove?: boolean;
+  } | null;
 };
 
-function validateTitle(title: string): string | undefined {
-  if (title.trim().length < 2) {
-    return "Title must be at least 2 characters.";
-  }
-  return undefined;
-}
-
 function validateCity(city: string): string | undefined {
-  if (city.trim().length < 2) {
-    return "City is required.";
+  if (!city.trim()) {
+    return undefined;
   }
   if (!isValidCity(city)) {
     return "Please choose a city from the list.";
@@ -50,14 +58,18 @@ function validateCity(city: string): string | undefined {
   return undefined;
 }
 
-function validateDateISO(dateLocal: string): string | undefined {
-  if (!dateLocal) {
+function validateDateAndTime(datePart: string, timePart: string): string | undefined {
+  if (!datePart && !timePart) {
     return undefined;
   }
 
-  const parsed = new Date(dateLocal);
+  if (!datePart || !timePart) {
+    return "Choose both date and time.";
+  }
+
+  const parsed = new Date(`${datePart}T${timePart}`);
   if (Number.isNaN(parsed.getTime())) {
-    return "Date must be valid.";
+    return "Date and time must be valid.";
   }
 
   return undefined;
@@ -72,7 +84,7 @@ function validateAddress(address: string): string | undefined {
 
 function validateLocation(pickedLatLng: LatLng | null): string | undefined {
   if (!pickedLatLng) {
-    return "Please select a location on the map.";
+    return undefined;
   }
   return undefined;
 }
@@ -104,25 +116,58 @@ function validateWhatsappInviteUrl(
 export default function CreateEventForm({
   pickedLatLng,
   onPickedLatLngChange,
+  onCityChange,
   onSubmitSuccess,
+  initialValues,
 }: CreateEventFormProps) {
-  const [title, setTitle] = useState("");
+  const [customName, setCustomName] = useState("");
   const [city, setCity] = useState("");
   const [citySelected, setCitySelected] = useState(false);
   const [category, setCategory] = useState<EventCategory>("COFFEE");
   const [customCategoryTitle, setCustomCategoryTitle] = useState("");
   const [address, setAddress] = useState("");
-  const [dateLocal, setDateLocal] = useState("");
+  const [datePart, setDatePart] = useState("");
+  const [timePart, setTimePart] = useState("");
   const [description, setDescription] = useState("");
   const [contactMethod, setContactMethod] = useState<ContactMethod>("NONE");
   const [contactVisibility, setContactVisibility] =
     useState<ContactVisibility>("SIGNED_IN_ONLY");
+  const [autoApprove, setAutoApprove] = useState(false);
   const [whatsappInviteUrl, setWhatsappInviteUrl] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeMessage, setGeocodeMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const categoryDisplay = getCategoryDisplay(
+    category,
+    category === "OTHER" ? customCategoryTitle : undefined,
+  );
+  const generatedTitle = city.trim()
+    ? `${categoryDisplay.label} in ${city.trim()}`
+    : `${categoryDisplay.label} event`;
+  const finalTitle = customName.trim() || generatedTitle;
+
+  useEffect(() => {
+    if (!initialValues) {
+      return;
+    }
+
+    setCategory(initialValues.category ?? "COFFEE");
+    setCustomName(initialValues.customName ?? "");
+    setCustomCategoryTitle(initialValues.customCategoryTitle ?? "");
+    setCity(initialValues.city ?? "");
+    setCitySelected(Boolean(initialValues.city));
+    setAddress(initialValues.address ?? "");
+    setDescription(initialValues.description ?? "");
+    setContactMethod(initialValues.contactMethod ?? "NONE");
+    setContactVisibility(initialValues.contactVisibility ?? "SIGNED_IN_ONLY");
+    setWhatsappInviteUrl(initialValues.whatsappInviteUrl ?? "");
+    setAutoApprove(Boolean(initialValues.autoApprove));
+    setDatePart("");
+    setTimePart("");
+    onCityChange?.(initialValues.city ?? "");
+  }, [initialValues, onCityChange]);
 
   const getFriendlySubmitError = async (response: Response) => {
     const rawText = await response.text().catch(() => "");
@@ -165,17 +210,20 @@ export default function CreateEventForm({
     setSubmitError(null);
 
     const nextErrors: FormErrors = {
-      title: validateTitle(title),
       city:
         !citySelected && city.trim().length > 0
           ? "Please choose a city from the list."
           : validateCity(city),
+      customName:
+        customName.trim().length > 0 && customName.trim().length < 2
+          ? "Custom name must be at least 2 characters."
+          : undefined,
       customCategoryTitle:
         category === "OTHER" && customCategoryTitle.trim().length < 2
           ? "Please enter a title for the Other category."
           : undefined,
       address: validateAddress(address),
-      date: validateDateISO(dateLocal),
+      date: validateDateAndTime(datePart, timePart),
       contactMethod: undefined,
       whatsappInviteUrl: validateWhatsappInviteUrl(
         contactMethod,
@@ -184,9 +232,15 @@ export default function CreateEventForm({
       location: validateLocation(pickedLatLng),
     };
 
+    const hasAnyLocationInput =
+      Boolean(address.trim()) || Boolean(city.trim()) || Boolean(pickedLatLng);
+    if (!hasAnyLocationInput) {
+      nextErrors.location = "Add address, city, or choose a point on the map.";
+    }
+
     const hasError = Boolean(
-      nextErrors.title ||
-        nextErrors.city ||
+      nextErrors.city ||
+        nextErrors.customName ||
         nextErrors.customCategoryTitle ||
         nextErrors.address ||
         nextErrors.date ||
@@ -197,7 +251,7 @@ export default function CreateEventForm({
       return;
     }
 
-    const dateISO = dateLocal ? new Date(dateLocal).toISOString() : undefined;
+    const dateISO = combineDateAndTimeToISO(datePart, timePart);
     setIsSubmitting(true);
 
     try {
@@ -207,7 +261,7 @@ export default function CreateEventForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: title.trim(),
+          title: finalTitle,
           city: city.trim(),
           category,
           customCategoryTitle:
@@ -217,12 +271,13 @@ export default function CreateEventForm({
           dateISO,
           contactMethod,
           contactVisibility,
+          autoApprove,
           whatsappInviteUrl:
             contactMethod === "WHATSAPP_GROUP"
               ? whatsappInviteUrl.trim()
               : undefined,
-          lat: pickedLatLng!.lat,
-          lng: pickedLatLng!.lng,
+          lat: pickedLatLng?.lat,
+          lng: pickedLatLng?.lng,
         }),
       });
 
@@ -282,7 +337,23 @@ export default function CreateEventForm({
 
       onPickedLatLngChange({ lat: data.lat, lng: data.lng });
       if (typeof data.displayName === "string" && data.displayName.trim()) {
-        setAddress(data.displayName.trim().slice(0, 120));
+        const displayName = data.displayName.trim();
+        setAddress(displayName.slice(0, 120));
+
+        const segments = displayName
+          .split(",")
+          .map((segment) => segment.trim())
+          .filter(Boolean);
+        const extractedCityCandidate =
+          segments.find((segment) => isValidCity(segment)) ?? null;
+        const extractedCity = extractedCityCandidate
+          ? normalizeCity(extractedCityCandidate)
+          : null;
+        if (extractedCity) {
+          setCity(extractedCity);
+          setCitySelected(true);
+          onCityChange?.(extractedCity);
+        }
       }
       setGeocodeMessage("Location found on map");
     } catch {
@@ -293,40 +364,33 @@ export default function CreateEventForm({
   };
 
   return (
-    <form className="space-y-4 rounded-xl border p-4" onSubmit={handleSubmit}>
+    <form className="ui-card-static space-y-6" onSubmit={handleSubmit}>
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="title">
-          Title
-        </label>
-        <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          id="title"
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          type="text"
-          value={title}
-        />
-        {errors.title ? <p className="mt-1 text-sm text-red-600">{errors.title}</p> : null}
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Preview
+        </p>
+        <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="text-sm font-medium">
+            {categoryDisplay.emoji} {finalTitle}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            City: {city.trim() || "Select a city"}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Date:{" "}
+            {datePart && timePart
+              ? new Date(`${datePart}T${timePart}`).toLocaleString()
+              : "Not set yet"}
+          </p>
+        </div>
       </div>
 
       <div>
-        <CityAutocomplete
-          label="City"
-          onChange={setCity}
-          onSelectionChange={setCitySelected}
-          required
-          selected={citySelected}
-          value={city}
-        />
-        {errors.city ? <p className="mt-1 text-sm text-red-600">{errors.city}</p> : null}
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="category">
+        <label className="label-base" htmlFor="category">
           Category
         </label>
         <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="input-base"
           id="category"
           onChange={(e) => {
             const nextCategory = e.target.value as EventCategory;
@@ -350,7 +414,7 @@ export default function CreateEventForm({
         {category === "OTHER" ? (
           <div className="mt-2">
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="input-base"
               maxLength={60}
               onChange={(e) => setCustomCategoryTitle(e.target.value)}
               placeholder="Enter category title"
@@ -365,59 +429,153 @@ export default function CreateEventForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="address">
-          Address (optional)
+        <label className="label-base" htmlFor="customName">
+          Custom name (optional)
         </label>
         <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          id="address"
-          maxLength={120}
-          placeholder="Leave empty if you don't want to set an address"
-          onBlur={() => {
-            void geocodeAddress();
-          }}
-          onChange={(e) => {
-            setAddress(e.target.value);
-            setGeocodeMessage(null);
-          }}
+          className="input-base"
+          id="customName"
+          onChange={(e) => setCustomName(e.target.value)}
+          placeholder="Leave empty to generate a name automatically"
           type="text"
-          value={address}
+          value={customName}
         />
-        <div className="mt-2 flex items-center gap-2">
-          <button
-            className="rounded-md border px-3 py-1 text-sm"
-            disabled={isGeocoding}
-            onClick={() => {
-              void geocodeAddress();
-            }}
-            type="button"
-          >
-            Find Address
-          </button>
-          {isGeocoding ? <span className="text-sm text-gray-600">Finding...</span> : null}
-        </div>
-        {errors.address ? (
-          <p className="mt-1 text-sm text-red-600">{errors.address}</p>
-        ) : null}
-        {geocodeMessage ? (
-          <p
-            className={
-              geocodeMessage === "Location found on map"
-                ? "mt-1 text-sm text-green-700"
-                : "mt-1 text-sm text-red-600"
-            }
-          >
-            {geocodeMessage}
-          </p>
+        {errors.customName ? (
+          <p className="mt-1 text-sm text-red-600">{errors.customName}</p>
         ) : null}
       </div>
 
+      <div className="rounded-lg border border-gray-200 p-3">
+        <p className="text-sm font-medium">Location</p>
+        <p className="mt-1 text-xs text-gray-600">
+          Use address, city, or map point. At least one is required.
+        </p>
+        <div className="mt-3">
+          <CityAutocomplete
+            label="City"
+            onChange={(nextCity) => {
+              setCity(nextCity);
+              onCityChange?.(nextCity);
+            }}
+            onSelectionChange={setCitySelected}
+            placeholder="Search city (optional)"
+            selected={citySelected}
+            value={city}
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            You can leave this empty if you choose the location on the map.
+          </p>
+          {errors.city ? <p className="mt-1 text-sm text-red-600">{errors.city}</p> : null}
+        </div>
+        <div className="mt-3">
+          <label className="label-base" htmlFor="address">
+            Address / place (optional)
+          </label>
+          <input
+            className="input-base"
+            id="address"
+            maxLength={120}
+            placeholder="Park, street, cafe, forest, trail..."
+            onBlur={() => {
+              void geocodeAddress();
+            }}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              setGeocodeMessage(null);
+            }}
+            type="text"
+            value={address}
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              className="btn-secondary !rounded-lg !px-3 !py-1.5"
+              disabled={isGeocoding}
+              onClick={() => {
+                void geocodeAddress();
+              }}
+              type="button"
+            >
+              Find Address
+            </button>
+            {isGeocoding ? <span className="text-sm text-gray-600">Finding...</span> : null}
+          </div>
+          {errors.address ? (
+            <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+          ) : null}
+          {geocodeMessage ? (
+            <p
+              className={
+                geocodeMessage === "Location found on map"
+                  ? "mt-1 text-sm text-green-700"
+                  : "mt-1 text-sm text-red-600"
+              }
+            >
+              {geocodeMessage}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 p-3">
+        <p className="text-sm font-medium">When</p>
+        <p className="mt-1 text-xs text-gray-600">Choose a date and a start time.</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="label-base" htmlFor="date">
+              Date
+            </label>
+            <input
+              className="input-base"
+              id="date"
+              onChange={(e) => setDatePart(e.target.value)}
+              type="date"
+              value={datePart}
+            />
+          </div>
+          <div>
+            <label className="label-base" htmlFor="time">
+              Time
+            </label>
+            <select
+              className="input-base"
+              id="time"
+              onChange={(e) => setTimePart(e.target.value)}
+              value={timePart}
+            >
+              <option value="">Select time</option>
+              {TIME_OPTIONS.map((timeValue) => (
+                <option key={timeValue} value={timeValue}>
+                  {timeValue}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Time can be selected only in 15-minute increments.
+        </p>
+        {errors.date ? <p className="mt-1 text-sm text-red-600">{errors.date}</p> : null}
+      </div>
+
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="contactMethod">
+        <label className="label-base" htmlFor="description">
+          Description
+        </label>
+        <textarea
+          className="input-base"
+          id="description"
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          value={description}
+        />
+      </div>
+
+      <div>
+        <label className="label-base" htmlFor="contactMethod">
           Contact method
         </label>
         <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="input-base"
           id="contactMethod"
           onChange={(e) => {
             const value = e.target.value as ContactMethod;
@@ -437,11 +595,11 @@ export default function CreateEventForm({
 
         {contactMethod === "WHATSAPP_GROUP" ? (
           <div className="mt-2">
-            <label className="mb-1 block text-sm font-medium" htmlFor="whatsappInviteUrl">
+            <label className="label-base" htmlFor="whatsappInviteUrl">
               WhatsApp group invite link
             </label>
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="input-base"
               id="whatsappInviteUrl"
               onChange={(e) => setWhatsappInviteUrl(e.target.value)}
               placeholder="https://chat.whatsapp.com/..."
@@ -463,11 +621,11 @@ export default function CreateEventForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="contactVisibility">
+        <label className="label-base" htmlFor="contactVisibility">
           Contact visibility
         </label>
         <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="input-base"
           id="contactVisibility"
           onChange={(e) =>
             setContactVisibility(e.target.value as ContactVisibility)
@@ -482,31 +640,24 @@ export default function CreateEventForm({
         </select>
       </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="date">
-          Date & Time
+      <div className="rounded-lg border border-gray-200 p-3">
+        <p className="text-sm font-medium">Join settings</p>
+        <label className="label-base mt-2" htmlFor="joinPolicy">
+          Join policy
         </label>
-        <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          id="date"
-          onChange={(e) => setDateLocal(e.target.value)}
-          type="datetime-local"
-          value={dateLocal}
-        />
-        {errors.date ? <p className="mt-1 text-sm text-red-600">{errors.date}</p> : null}
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="description">
-          Description
-        </label>
-        <textarea
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          id="description"
-          onChange={(e) => setDescription(e.target.value)}
-          rows={4}
-          value={description}
-        />
+        <select
+          className="input-base"
+          id="joinPolicy"
+          onChange={(event) => {
+            setAutoApprove(event.target.value === "ANYONE");
+          }}
+          value={autoApprove ? "ANYONE" : "REQUEST"}
+        >
+          <option value="ANYONE">Anyone can join</option>
+          <option value="REQUEST">
+            Request to join (organizer approval required)
+          </option>
+        </select>
       </div>
 
       {errors.location ? (
@@ -514,7 +665,7 @@ export default function CreateEventForm({
       ) : null}
 
       <button
-        className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+        className="btn-primary"
         disabled={isSubmitting}
         type="submit"
       >

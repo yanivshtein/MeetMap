@@ -22,6 +22,7 @@ type LocationPickerMapProps = {
   center: [number, number];
   zoom: number;
   value: LatLng | null;
+  focusLatLng?: LatLng | null;
   onChange: (value: LatLng) => void;
   onLocationStatusChange?: (value: {
     status: LocationStatus;
@@ -71,6 +72,7 @@ export default function LocationPickerMap({
   center,
   zoom,
   value,
+  focusLatLng,
   onChange,
   onLocationStatusChange,
 }: LocationPickerMapProps) {
@@ -127,6 +129,14 @@ export default function LocationPickerMap({
 
     setRecenterTarget(value);
   }, [value]);
+
+  useEffect(() => {
+    if (!focusLatLng) {
+      return;
+    }
+
+    setRecenterTarget(focusLatLng);
+  }, [focusLatLng]);
 
   const initialCenter = useMemo<[number, number]>(() => {
     if (coords) {

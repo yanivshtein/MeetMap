@@ -134,19 +134,19 @@ export default function NotificationsPage() {
 
   if (status === "loading") {
     return (
-      <main className="mx-auto max-w-4xl p-6">
-        <p className="text-sm text-gray-600">Checking authentication...</p>
+      <main className="app-shell max-w-4xl">
+        <p className="body-muted">Checking authentication...</p>
       </main>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-4xl p-6">
-        <h1 className="text-2xl font-semibold">Notifications</h1>
-        <p className="mt-3 text-gray-700">Please sign in to view notifications.</p>
+      <main className="app-shell page-stack max-w-4xl">
+        <h1 className="page-title">Notifications</h1>
+        <p className="body-muted">Please sign in to view notifications.</p>
         <button
-          className="mt-4 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={() => signIn("google", { callbackUrl: "/notifications" })}
           type="button"
         >
@@ -159,11 +159,11 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((item) => !item.isRead).length;
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
+    <main className="app-shell page-stack max-w-4xl">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Notifications</h1>
+        <h1 className="page-title">Notifications</h1>
         <button
-          className="rounded-md border px-3 py-1.5 text-sm"
+          className="btn-secondary"
           onClick={() => {
             void markAllRead();
           }}
@@ -173,18 +173,18 @@ export default function NotificationsPage() {
         </button>
       </div>
 
-      <p className="mt-2 text-sm text-gray-600">
+      <p className="body-muted">
         {unreadCount} unread {unreadCount === 1 ? "notification" : "notifications"}.
       </p>
 
-      {loading ? <p className="mt-3 text-sm text-gray-600">Loading...</p> : null}
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {loading ? <p className="body-muted">Loading...</p> : null}
+      {error ? <p className="body-muted text-red-600">{error}</p> : null}
 
-      <div className="mt-4 space-y-2">
+      <div className="space-y-2">
         {notifications.map((notification) => (
           <div
             className={[
-              "rounded-lg border p-3",
+              "rounded-xl border border-gray-200 p-3 shadow-sm",
               notification.isRead ? "bg-white" : "bg-blue-50",
             ].join(" ")}
             key={notification.id}
@@ -194,7 +194,7 @@ export default function NotificationsPage() {
               <span>{new Date(notification.createdAt).toLocaleString()}</span>
               {notification.eventId ? (
                 <Link
-                  className="text-blue-700 underline"
+                  className="text-indigo-700 underline"
                   href={`/events/${notification.eventId}`}
                   onClick={() => {
                     if (notification.isRead) {
@@ -219,7 +219,7 @@ export default function NotificationsPage() {
         ))}
 
         {!loading && notifications.length === 0 ? (
-          <p className="text-sm text-gray-600">No notifications yet.</p>
+          <p className="body-muted">No notifications yet.</p>
         ) : null}
       </div>
     </main>

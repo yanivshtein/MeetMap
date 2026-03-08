@@ -397,18 +397,18 @@ export default function EventDetailsPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <p className="text-sm text-gray-600">Loading event details...</p>
+      <main className="app-shell max-w-3xl">
+        <p className="body-muted">Loading event details...</p>
       </main>
     );
   }
 
   if (error && !event) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <h1 className="text-2xl font-semibold">Event</h1>
-        <p className="mt-3 text-gray-700">{error}</p>
-        <Link className="mt-4 inline-block text-sm text-blue-700" href="/">
+      <main className="app-shell page-stack max-w-3xl">
+        <h1 className="page-title">Event</h1>
+        <p className="body-muted">{error}</p>
+        <Link className="mt-4 inline-block text-sm text-indigo-700" href="/">
           Back to map
         </Link>
       </main>
@@ -417,19 +417,19 @@ export default function EventDetailsPage() {
 
   if (!event) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <p className="text-gray-700">Event not found.</p>
+      <main className="app-shell max-w-3xl">
+        <p className="body-muted text-gray-700">Event not found.</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <div className="rounded-xl border p-4">
+    <main className="app-shell page-stack max-w-3xl">
+      <div className="ui-card-static">
         <p className="text-sm text-gray-600">
           {categoryDisplay.emoji} {categoryDisplay.label}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold">{event.title}</h1>
+        <h1 className="mt-1 text-3xl font-bold">{event.title}</h1>
 
         {event.address ? <p className="mt-3 text-gray-700">{event.address}</p> : null}
         {event.dateISO ? (
@@ -451,7 +451,7 @@ export default function EventDetailsPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
-            className="rounded border px-3 py-1.5 text-sm"
+            className="btn-secondary"
             onClick={() => {
               void handleCopyLink();
             }}
@@ -459,23 +459,29 @@ export default function EventDetailsPage() {
           >
             Copy link
           </button>
+          <Link
+            className="btn-secondary"
+            href={`/create?duplicate=${event.id}`}
+          >
+            Duplicate event
+          </Link>
 
           {isOwner ? (
             <>
               <Link
-                className="rounded bg-gray-800 px-3 py-1.5 text-sm text-white"
+                className="btn-primary !bg-gray-800"
                 href={`/edit/${event.id}`}
               >
                 Edit
               </Link>
               <Link
-                className="rounded bg-blue-700 px-3 py-1.5 text-sm text-white"
+                className="btn-primary !bg-blue-700"
                 href={`/events/${event.id}/manage`}
               >
                 Manage Requests
               </Link>
               <button
-                className="rounded bg-red-600 px-3 py-1.5 text-sm text-white"
+                className="btn-primary !bg-red-600"
                 disabled={isDeleting}
                 onClick={() => {
                   void handleDelete();
@@ -492,13 +498,13 @@ export default function EventDetailsPage() {
         {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
       </div>
 
-      <section className="mt-4 rounded-xl border p-4">
-        <h2 className="text-lg font-semibold">Contact</h2>
+      <section className="ui-card-static">
+        <h2 className="section-title text-lg">Contact</h2>
         {!isAuthenticated ? (
           <div className="mt-2">
             <p className="text-sm text-gray-700">Sign in to see contact options.</p>
             <button
-              className="mt-2 rounded-md bg-black px-3 py-1.5 text-sm text-white"
+              className="btn-primary mt-2"
               onClick={() => signIn("google", { callbackUrl: `/events/${eventId}` })}
               type="button"
             >
@@ -510,7 +516,7 @@ export default function EventDetailsPage() {
         ) : contactData?.method === "WHATSAPP_GROUP" ? (
           contactData.url ? (
             <a
-              className="mt-2 inline-block rounded-md bg-green-600 px-3 py-1.5 text-sm text-white"
+              className="btn-primary mt-2 !bg-green-600"
               href={contactData.url}
               rel="noopener noreferrer"
               target="_blank"
@@ -542,13 +548,13 @@ export default function EventDetailsPage() {
             {contactData.phone ? (
               <div className="mt-3 flex items-center gap-2">
                 <a
-                  className="rounded-md border px-3 py-1.5 text-sm"
+                  className="btn-secondary"
                   href={`tel:${contactData.phone}`}
                 >
                   Call
                 </a>
                 <a
-                  className="rounded-md border px-3 py-1.5 text-sm"
+                  className="btn-secondary"
                   href={`https://wa.me/${toDigitsOnly(contactData.phone)}`}
                   rel="noopener noreferrer"
                   target="_blank"
@@ -573,14 +579,14 @@ export default function EventDetailsPage() {
         {contactError ? <p className="mt-2 text-sm text-red-600">{contactError}</p> : null}
       </section>
 
-      <section className="mt-4 rounded-xl border p-4">
-        <h2 className="text-lg font-semibold">Join Event</h2>
+      <section className="ui-card-static">
+        <h2 className="section-title text-lg">Join Event</h2>
 
         {!isAuthenticated ? (
           <div className="mt-2">
             <p className="text-sm text-gray-700">Sign in to request to join.</p>
             <button
-              className="mt-2 rounded-md bg-black px-3 py-1.5 text-sm text-white"
+              className="btn-primary mt-2"
               onClick={() => signIn("google", { callbackUrl: `/events/${eventId}` })}
               type="button"
             >
@@ -597,7 +603,7 @@ export default function EventDetailsPage() {
               <p className="text-sm text-gray-600">Loading your status...</p>
             ) : attendanceStatus === "NONE" ? (
               <button
-                className="rounded-md border px-3 py-1.5 text-sm"
+                className="btn-secondary"
                 disabled={attendanceActionLoading}
                 onClick={() => {
                   void handleRequestToJoin();
@@ -610,7 +616,7 @@ export default function EventDetailsPage() {
               <div className="flex items-center gap-2">
                 <p className="text-sm text-gray-700">Request pending.</p>
                 <button
-                  className="rounded-md border px-3 py-1.5 text-sm"
+                  className="btn-secondary"
                   disabled={attendanceActionLoading}
                   onClick={() => {
                     void handleCancelJoinRequest();
@@ -626,7 +632,7 @@ export default function EventDetailsPage() {
               <div className="flex items-center gap-2">
                 <p className="text-sm text-red-600">Request rejected.</p>
                 <button
-                  className="rounded-md border px-3 py-1.5 text-sm"
+                  className="btn-secondary"
                   disabled={attendanceActionLoading}
                   onClick={() => {
                     void handleRequestToJoin();
@@ -645,8 +651,8 @@ export default function EventDetailsPage() {
         )}
       </section>
 
-      <section className="mt-4 rounded-xl border p-4">
-        <h2 className="text-lg font-semibold">Attendees</h2>
+      <section className="ui-card-static">
+        <h2 className="section-title text-lg">Attendees</h2>
         {!isAuthenticated ? (
           <p className="mt-2 text-sm text-gray-700">
             Sign in to see attendees.

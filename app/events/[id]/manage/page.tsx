@@ -86,19 +86,19 @@ export default function ManageJoinRequestsPage() {
 
   if (status === "loading") {
     return (
-      <main className="mx-auto max-w-4xl p-6">
-        <p className="text-sm text-gray-600">Checking authentication...</p>
+      <main className="app-shell max-w-4xl">
+        <p className="body-muted">Checking authentication...</p>
       </main>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-4xl p-6">
-        <h1 className="text-2xl font-semibold">Manage Join Requests</h1>
-        <p className="mt-3 text-gray-700">Please sign in to manage requests.</p>
+      <main className="app-shell page-stack max-w-4xl">
+        <h1 className="page-title">Manage Join Requests</h1>
+        <p className="body-muted">Please sign in to manage requests.</p>
         <button
-          className="mt-4 rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={() => signIn("google", { callbackUrl: `/events/${eventId}/manage` })}
           type="button"
         >
@@ -110,22 +110,22 @@ export default function ManageJoinRequestsPage() {
 
   if (notAllowed) {
     return (
-      <main className="mx-auto max-w-4xl p-6">
-        <h1 className="text-2xl font-semibold">Manage Join Requests</h1>
+      <main className="app-shell page-stack max-w-4xl">
+        <h1 className="page-title">Manage Join Requests</h1>
         <p className="mt-3 text-red-600">Not allowed.</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-semibold">Manage Join Requests</h1>
-      {loading ? <p className="mt-3 text-sm text-gray-600">Loading...</p> : null}
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+    <main className="app-shell page-stack max-w-4xl">
+      <h1 className="page-title">Manage Join Requests</h1>
+      {loading ? <p className="body-muted">Loading...</p> : null}
+      {error ? <p className="body-muted text-red-600">{error}</p> : null}
 
-      <div className="mt-4 rounded-xl border p-4">
+      <div className="ui-card-static">
         {requests.length === 0 && !loading ? (
-          <p className="text-sm text-gray-600">No join requests.</p>
+          <p className="body-muted">No join requests.</p>
         ) : (
           <ul className="space-y-3">
             {requests.map((request) => (
@@ -158,7 +158,7 @@ export default function ManageJoinRequestsPage() {
                 {request.status === "PENDING" ? (
                   <div className="flex items-center gap-2">
                     <button
-                      className="rounded bg-green-600 px-3 py-1.5 text-sm text-white"
+                      className="btn-primary !bg-green-600"
                       onClick={() => {
                         void mutateRequest(request.id, "approve");
                       }}
@@ -167,7 +167,7 @@ export default function ManageJoinRequestsPage() {
                       Approve
                     </button>
                     <button
-                      className="rounded bg-red-600 px-3 py-1.5 text-sm text-white"
+                      className="btn-primary !bg-red-600"
                       onClick={() => {
                         void mutateRequest(request.id, "reject");
                       }}

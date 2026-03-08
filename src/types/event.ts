@@ -12,12 +12,17 @@ export type Event = {
   contactVisibility: ContactVisibility;
   whatsappInviteUrl?: string;
   title: string;
-  city: string;
+  city?: string;
+  autoApprove?: boolean;
   userId?: string;
   user?: {
     id: string;
     name?: string | null;
     image?: string | null;
+  };
+  attendanceCount?: number;
+  _count?: {
+    attendances?: number;
   };
   address?: string;
   description?: string;

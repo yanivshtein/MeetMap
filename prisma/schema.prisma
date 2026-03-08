@@ -28,7 +28,8 @@ model Event {
   title               String
   description         String?
   address             String?
-  city                String
+  city                String?
+  autoApprove         Boolean      @default(false)
   dateISO             String?
   contactMethod       String       @default("NONE")
   contactVisibility   String       @default("SIGNED_IN_ONLY")

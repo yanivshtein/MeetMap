@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { getAuthSession } from "@/src/lib/auth";
-import { isValidCity } from "@/src/lib/cities";
+import { findCityInText, normalizeCity } from "@/src/lib/cities";
 import {
   isValidContactMethod,
   isValidContactVisibility,
@@ -18,6 +18,7 @@ type CreateEventBody = {
   category?: unknown;
   customCategoryTitle?: unknown;
   title?: unknown;
+  autoApprove?: unknown;
   city?: unknown;
   description?: unknown;
   address?: unknown;
@@ -52,6 +53,50 @@ async function resolveUserId(
   }
 
   return undefined;
+}
+
+type GeocodedLocation = {
+  lat: number;
+  lng: number;
+  city: string | null;
+};
+
+async function geocodeLocation(query: string): Promise<GeocodedLocation | null> {
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
+    {
+      headers: {
+        "User-Agent": "event-planner-app",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const results = (await response.json()) as Array<{
+    lat?: string;
+    lon?: string;
+    display_name?: string;
+  }>;
+
+  if (!Array.isArray(results) || results.length === 0) {
+    return null;
+  }
+
+  const first = results[0];
+  const lat = Number(first.lat);
+  const lng = Number(first.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+    city: findCityInText(first.display_name ?? ""),
+  };
 }
 
 export async function GET(request: Request) {
@@ -197,6 +242,7 @@ export async function POST(request: Request) {
     }
 
     const title = typeof body.title === "string" ? body.title.trim() : "";
+    const autoApprove = typeof body.autoApprove === "boolean" ? body.autoApprove : false;
     const city = typeof body.city === "string" ? body.city.trim() : "";
     const category =
       typeof body.category === "string" ? body.category.trim() : "";
@@ -219,25 +265,12 @@ export async function POST(request: Request) {
       typeof body.whatsappInviteUrl === "string"
         ? body.whatsappInviteUrl.trim()
         : "";
-    const lat = typeof body.lat === "number" ? body.lat : Number.NaN;
-    const lng = typeof body.lng === "number" ? body.lng : Number.NaN;
+    let lat = typeof body.lat === "number" ? body.lat : Number.NaN;
+    let lng = typeof body.lng === "number" ? body.lng : Number.NaN;
 
     if (title.length < 2) {
       return NextResponse.json(
         { error: "Title must be at least 2 characters." },
-        { status: 400 },
-      );
-    }
-
-    if (city.length < 2) {
-      return NextResponse.json(
-        { error: "City is required." },
-        { status: 400 },
-      );
-    }
-    if (!isValidCity(city)) {
-      return NextResponse.json(
-        { error: "Please choose a city from the list." },
         { status: 400 },
       );
     }
@@ -286,11 +319,39 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    let normalizedCity = city ? normalizeCity(city) : null;
+    if (city && !normalizedCity) {
       return NextResponse.json(
-        { error: "Latitude and longitude are required." },
+        { error: "Please choose a city from the list." },
         { status: 400 },
       );
+    }
+
+    const hasAddress = Boolean(address && address.length > 0);
+    const hasCity = Boolean(normalizedCity);
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+    if (!hasAddress && !hasCity && !hasCoords) {
+      return NextResponse.json(
+        { error: "Please provide at least one location input: address, city, or map point." },
+        { status: 400 },
+      );
+    }
+
+    if (!hasCoords) {
+      const geocodeQuery = [address, normalizedCity].filter(Boolean).join(", ");
+      const geocoded = geocodeQuery ? await geocodeLocation(geocodeQuery) : null;
+      if (!geocoded) {
+        return NextResponse.json(
+          { error: "Could not resolve map coordinates from address/city. Please click on the map." },
+          { status: 400 },
+        );
+      }
+
+      lat = geocoded.lat;
+      lng = geocoded.lng;
+      if (!normalizedCity && geocoded.city) {
+        normalizedCity = geocoded.city;
+      }
     }
 
     if (dateISO) {
@@ -312,7 +373,8 @@ export async function POST(request: Request) {
         category,
         customCategoryTitle: category === "OTHER" ? customCategoryTitle : null,
         title,
-        city,
+        city: normalizedCity ?? "",
+        autoApprove,
         description: description || null,
         address: address || null,
         dateISO: dateISO || null,
@@ -327,23 +389,25 @@ export async function POST(request: Request) {
       },
     });
 
-    const matchingUsers = await db.user.findMany({
-      where: {
-        id: {
-          not: userId,
-        },
-        homeTown: {
-          equals: city,
-          mode: "insensitive",
-        },
-        interestedCategories: {
-          has: category,
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
+    const matchingUsers = normalizedCity
+      ? await db.user.findMany({
+          where: {
+            id: {
+              not: userId,
+            },
+            homeTown: {
+              equals: normalizedCity,
+              mode: "insensitive",
+            },
+            interestedCategories: {
+              has: category,
+            },
+          },
+          select: {
+            id: true,
+          },
+        })
+      : [];
 
     if (matchingUsers.length > 0) {
       const categoryLabel = getCategoryDisplay(
@@ -360,7 +424,9 @@ export async function POST(request: Request) {
                 type: "NEW_MATCHING_EVENT",
                 eventId: event.id,
                 actorId: userId,
-                message: `A new ${categoryLabel} event was created in ${event.city}`,
+                message: event.city
+                  ? `A new ${categoryLabel} event was created in ${event.city}`
+                  : `A new ${categoryLabel} event was created`,
               },
             });
           } catch (notificationError) {
