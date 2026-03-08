@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import CreateEventForm from "@/src/components/CreateEventForm";
 import {
@@ -24,7 +24,6 @@ const LocationPickerMap = dynamic(
 
 export default function CreatePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { status } = useSession();
   const [pickedLatLng, setPickedLatLng] = useState<LatLng | null>(null);
   const [cityQuery, setCityQuery] = useState("");
@@ -45,7 +44,26 @@ export default function CreatePage() {
   } | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [locationError, setLocationError] = useState<string | null>(null);
-  const duplicateId = searchParams.get("duplicate");
+  const [duplicateId, setDuplicateId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncDuplicateId = () => {
+      const nextDuplicateId = new URLSearchParams(window.location.search).get(
+        "duplicate",
+      );
+      setDuplicateId(nextDuplicateId);
+    };
+
+    syncDuplicateId();
+    window.addEventListener("popstate", syncDuplicateId);
+    return () => {
+      window.removeEventListener("popstate", syncDuplicateId);
+    };
+  }, []);
 
   useEffect(() => {
     const query = cityQuery.trim();
