@@ -3,6 +3,9 @@
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
 import CityAutocomplete from "@/src/components/CityAutocomplete";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Input } from "@/src/components/ui/input";
 import { isValidCity } from "@/src/lib/cities";
 import {
   CATEGORY_GROUPS,
@@ -185,15 +188,15 @@ export default function SettingsPage() {
       {loading ? <p className="body-muted">Loading profile...</p> : null}
 
       <div className="space-y-6">
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="section-title text-lg">Contact information</h2>
-
-          <div className="mt-4">
+        <Card>
+          <CardHeader className="p-5 pb-0">
+            <CardTitle className="text-lg">Contact information</CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
             <label className="label-base" htmlFor="phone">
               📞 Phone number
             </label>
-            <input
-              className="input-base"
+            <Input
               id="phone"
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+972501234567"
@@ -203,13 +206,14 @@ export default function SettingsPage() {
             <p className="mt-1 text-sm text-gray-500">
               Used when an event contact method is Organizer phone.
             </p>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="section-title text-lg">Location preferences</h2>
-
-          <div className="mt-4">
+        <Card>
+          <CardHeader className="p-5 pb-0">
+            <CardTitle className="text-lg">Location preferences</CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
             <CityAutocomplete
               label="📍 Home town"
               onChange={setHomeTown}
@@ -221,11 +225,14 @@ export default function SettingsPage() {
             <p className="mt-1 text-sm text-gray-500">
               Get notifications when new events matching your interests are created in your town.
             </p>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="section-title text-lg">Activity interests</h2>
+        <Card>
+          <CardHeader className="p-5 pb-0">
+            <CardTitle className="text-lg">Activity interests</CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
           <div className="mt-4 max-h-80 space-y-4 overflow-y-auto rounded-lg border border-gray-200 p-3">
             {CATEGORY_GROUPS.map((group) => (
               <div key={group.group}>
@@ -265,11 +272,12 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
-        </section>
+          </CardContent>
+        </Card>
       </div>
 
-      <button
-        className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white shadow-md transition hover:bg-indigo-700"
+      <Button
+        className="px-6 py-3"
         disabled={saving}
         onClick={() => {
           void handleSave();
@@ -277,7 +285,7 @@ export default function SettingsPage() {
         type="button"
       >
         {saving ? "Saving..." : "Save settings"}
-      </button>
+      </Button>
 
       {error ? <p className="body-muted text-red-600">{error}</p> : null}
       {success ? <p className="body-muted text-green-700">{success}</p> : null}

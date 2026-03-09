@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent } from "@/src/components/ui/card";
 import { useSessionClient } from "@/src/lib/sessionClient";
 
 type NotificationItem = {
@@ -179,15 +182,16 @@ export default function NotificationsPage() {
             Stay updated on activity related to your events.
           </p>
         </div>
-        <button
-          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        <Button
+          className="rounded-lg"
+          variant="secondary"
           onClick={() => {
             void markAllRead();
           }}
           type="button"
         >
           Mark all read
-        </button>
+        </Button>
       </div>
 
       <p className="body-muted">
@@ -199,21 +203,27 @@ export default function NotificationsPage() {
 
       <div className="space-y-4">
         {notifications.map((notification) => (
-          <article
+          <Card
             className={[
-              "rounded-xl border p-4 shadow-sm transition hover:shadow-md",
+              "transition hover:shadow-md",
               notification.isRead
                 ? "border-gray-200 bg-white"
                 : "border-indigo-200 bg-indigo-50/40",
             ].join(" ")}
             key={notification.id}
           >
+            <CardContent className="p-4">
             <div className="flex items-start gap-3">
               <span className="mt-0.5 text-lg">{getNotificationIcon(notification.type)}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-gray-900">{notification.message}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
                   <span>{new Date(notification.createdAt).toLocaleString()}</span>
+                  {!notification.isRead ? (
+                    <Badge className="text-[10px]" variant="default">
+                      New
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -241,14 +251,17 @@ export default function NotificationsPage() {
                 </Link>
               ) : null}
             </div>
-          </article>
+            </CardContent>
+          </Card>
         ))}
 
         {!loading && notifications.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+          <Card>
+            <CardContent className="p-6 text-center">
             <p className="text-lg font-semibold text-gray-900">You&apos;re all caught up 🎉</p>
             <p className="mt-1 text-sm text-gray-500">No new notifications.</p>
-          </div>
+            </CardContent>
+          </Card>
         ) : null}
       </div>
     </main>

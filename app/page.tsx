@@ -1,10 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BottomEventCard from "@/src/components/BottomEventCard";
 import MapEventsClient from "@/src/components/MapEventsClient";
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import { Select } from "@/src/components/ui/select";
 import type { MapBounds } from "@/src/components/MapEvents";
 import { debounce } from "@/src/lib/debounce";
 import { makeCacheKey } from "@/src/lib/eventsCache";
@@ -251,6 +255,16 @@ export default function HomePage() {
   return (
     <main className="app-shell page-stack">
       <section className="ui-card-static rounded-2xl bg-gradient-to-r from-indigo-50 via-white to-blue-50 px-6 py-10 text-center md:px-10 md:py-12">
+        <div className="mx-auto mb-4 w-fit">
+          <Image
+            alt="MeetMap icon"
+            className="h-auto w-[68px] object-contain"
+            height={68}
+            priority
+            src="/logo-icon.png"
+            width={68}
+          />
+        </div>
         <h1 className="text-4xl font-bold tracking-tight text-gray-900">
           MeetMap
         </h1>
@@ -274,20 +288,17 @@ export default function HomePage() {
         </div>
         <div className="mt-6 flex flex-col items-center gap-3">
           {isAuthenticated ? (
-            <Link
-              className="btn-primary px-6 py-3 text-sm font-semibold"
-              href="/create"
-            >
-              Create activity
-            </Link>
+            <Button asChild className="px-6 py-3 text-sm font-semibold">
+              <Link href="/create">Create activity</Link>
+            </Button>
           ) : (
-            <button
-              className="btn-primary px-6 py-3 text-sm font-semibold"
+            <Button
+              className="px-6 py-3 text-sm font-semibold"
               onClick={() => signIn("google", { callbackUrl: "/create" })}
               type="button"
             >
               Create activity
-            </button>
+            </Button>
           )}
           <p className="text-sm text-gray-500">
             Click on the map to explore events near you.
@@ -305,8 +316,8 @@ export default function HomePage() {
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-          <input
-            className="input-base !w-auto flex-1 !rounded-full !px-4 !py-2"
+          <Input
+            className="!w-auto flex-1 !rounded-full !px-4 !py-2"
             onChange={(e) =>
               setFilters((prev) => ({ ...prev, q: e.target.value || undefined }))
             }
@@ -314,24 +325,24 @@ export default function HomePage() {
             type="text"
             value={filters.q ?? ""}
           />
-          <input
-            className="input-base !w-auto !rounded-full !px-4 !py-2"
+          <Input
+            className="!w-auto !rounded-full !px-4 !py-2"
             onChange={(e) =>
               setFilters((prev) => ({ ...prev, from: e.target.value || undefined }))
             }
             type="date"
             value={filters.from ?? ""}
           />
-          <input
-            className="input-base !w-auto !rounded-full !px-4 !py-2"
+          <Input
+            className="!w-auto !rounded-full !px-4 !py-2"
             onChange={(e) =>
               setFilters((prev) => ({ ...prev, to: e.target.value || undefined }))
             }
             type="date"
             value={filters.to ?? ""}
           />
-          <select
-            className="input-base !w-auto min-w-44 !rounded-full !px-4 !py-2"
+          <Select
+            className="!w-auto min-w-44 !rounded-full !px-4 !py-2"
             onChange={(e) =>
               setFilters((prev) => ({
                 ...prev,
@@ -352,7 +363,7 @@ export default function HomePage() {
                 ))}
               </optgroup>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="space-y-3">
@@ -407,17 +418,16 @@ export default function HomePage() {
                   <p className="body-muted mt-1">{emptySubtitle}</p>
                   <div className="mt-4">
                     {isAuthenticated ? (
-                      <Link className="btn-primary" href="/create">
-                        Create activity
-                      </Link>
+                      <Button asChild>
+                        <Link href="/create">Create activity</Link>
+                      </Button>
                     ) : (
-                      <button
-                        className="btn-primary"
+                      <Button
                         onClick={() => signIn("google", { callbackUrl: "/create" })}
                         type="button"
                       >
                         Create activity
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -431,17 +441,16 @@ export default function HomePage() {
               <p className="body-muted mt-1">{emptySubtitle}</p>
               <div className="mt-4">
                 {isAuthenticated ? (
-                  <Link className="btn-primary" href="/create">
-                    Create activity
-                  </Link>
+                  <Button asChild>
+                    <Link href="/create">Create activity</Link>
+                  </Button>
                 ) : (
-                  <button
-                    className="btn-primary"
+                  <Button
                     onClick={() => signIn("google", { callbackUrl: "/create" })}
                     type="button"
                   >
                     Create activity
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -451,17 +460,17 @@ export default function HomePage() {
 
       <div className="fixed inset-x-4 bottom-4 z-[1100] sm:inset-x-auto sm:bottom-6 sm:right-6">
         {isAuthenticated ? (
-          <Link className="btn-primary w-full rounded-full px-5 py-3 shadow-lg sm:w-auto" href="/create">
-            + Create activity
-          </Link>
+          <Button asChild className="w-full rounded-full px-5 py-3 shadow-lg sm:w-auto">
+            <Link href="/create">+ Create activity</Link>
+          </Button>
         ) : (
-          <button
-            className="btn-primary w-full rounded-full px-5 py-3 shadow-lg sm:w-auto"
+          <Button
+            className="w-full rounded-full px-5 py-3 shadow-lg sm:w-auto"
             onClick={() => signIn("google", { callbackUrl: "/create" })}
             type="button"
           >
             + Create activity
-          </button>
+          </Button>
         )}
       </div>
 

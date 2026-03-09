@@ -5,6 +5,9 @@ import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Button } from "@/src/components/ui/button";
+
+const LOGO_SRC = "/logo-icon.png";
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -28,6 +31,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
 export default function Navbar() {
   const { data: session, status } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -85,7 +89,29 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-[1200] h-14 border-b border-gray-200/90 bg-white/95 shadow-sm backdrop-blur">
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4">
-        <div className="text-base font-semibold tracking-tight">MeetMap</div>
+        <Link className="flex h-8 items-center gap-2.5" href="/">
+          <span className="relative inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-md border border-indigo-200 bg-indigo-50 shadow-sm">
+            <Image
+              alt="MeetMap logo"
+              className="h-7 w-7 object-contain"
+              height={28}
+              onError={() => setLogoFailed(true)}
+              onLoad={() => setLogoFailed(false)}
+              priority
+              src={LOGO_SRC}
+              unoptimized
+              width={28}
+            />
+            {logoFailed ? (
+              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-indigo-700">
+                MM
+              </span>
+            ) : null}
+          </span>
+          <span className="text-base font-semibold leading-none tracking-tight">
+            MeetMap
+          </span>
+        </Link>
 
         <nav className="flex items-center gap-1.5 md:gap-2">
           <NavLink href="/" label="Map" />
@@ -127,22 +153,14 @@ export default function Navbar() {
               {session.user?.name ? (
                 <span className="text-sm text-gray-700">{session.user.name}</span>
               ) : null}
-              <button
-                className="btn-secondary !rounded-lg !px-3 !py-1.5"
-                onClick={() => signOut()}
-                type="button"
-              >
+              <Button onClick={() => signOut()} size="sm" variant="secondary">
                 Sign out
-              </button>
+              </Button>
             </>
           ) : (
-            <button
-              className="btn-secondary !rounded-lg !px-3 !py-1.5"
-              onClick={() => signIn("google")}
-              type="button"
-            >
+            <Button onClick={() => signIn("google")} size="sm" variant="secondary">
               Sign in
-            </button>
+            </Button>
           )}
         </nav>
       </div>

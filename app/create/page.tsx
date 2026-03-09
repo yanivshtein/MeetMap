@@ -5,6 +5,8 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import CreateEventForm from "@/src/components/CreateEventForm";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent } from "@/src/components/ui/card";
 import {
   type ContactMethod,
   type ContactVisibility,
@@ -183,13 +185,12 @@ export default function CreatePage() {
       <main className="app-shell page-stack">
         <h1 className="page-title">Create Event</h1>
         <p className="body-muted">Please sign in to create an event.</p>
-        <button
-          className="btn-primary"
+        <Button
           onClick={() => signIn("google", { callbackUrl: "/create" })}
           type="button"
         >
           Sign in with Google
-        </button>
+        </Button>
       </main>
     );
   }
@@ -207,9 +208,11 @@ export default function CreatePage() {
     <main className="app-shell page-stack">
       <h1 className="page-title">Create Event</h1>
       {duplicateId ? (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-          Creating a new event based on a previous one
-        </div>
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="px-3 py-2 text-sm text-blue-900">
+            Creating a new event based on a previous one
+          </CardContent>
+        </Card>
       ) : null}
       {duplicateLoading ? (
         <p className="body-muted">Loading event to duplicate...</p>
@@ -229,7 +232,8 @@ export default function CreatePage() {
           />
         </div>
 
-        <div className="ui-card space-y-3">
+        <Card className="space-y-3">
+          <CardContent className="space-y-3 p-5">
           <h2 className="section-title text-lg">Choose the location on the map</h2>
           <p className="body-muted mt-1">
             Choose a city, enter an address, or click directly on the map.
@@ -248,7 +252,8 @@ export default function CreatePage() {
               zoom={13}
             />
           </div>
-        </div>
+          </CardContent>
+        </Card>
       </section>
     </main>
   );

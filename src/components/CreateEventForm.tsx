@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import CityAutocomplete from "@/src/components/CityAutocomplete";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Input } from "@/src/components/ui/input";
+import { Select } from "@/src/components/ui/select";
+import { Textarea } from "@/src/components/ui/textarea";
 import { isValidCity, normalizeCity } from "@/src/lib/cities";
 import {
   combineDateAndTimeToISO,
@@ -405,32 +411,37 @@ export default function CreateEventForm({
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
-      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm transition hover:shadow-md">
-        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
-          Live Preview
-        </p>
-        <p className="mt-2 text-xl font-bold text-gray-900">
-          {categoryDisplay.emoji} {finalTitle}
-        </p>
-        <div className="mt-3 space-y-1 text-sm text-gray-700">
-          <p>📍 {city.trim() || "Choose a city or map location"}</p>
-          <p>
-            🕒{" "}
-            {datePart && timePart
-              ? new Date(`${datePart}T${timePart}`).toLocaleString()
-              : "Not set yet"}
+      <Card className="border-indigo-200 bg-indigo-50">
+        <CardContent className="p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+            Live Preview
           </p>
-          <p>
-            👥{" "}
-            {autoApprove
-              ? "Anyone can join"
-              : "Request to join (organizer approval required)"}
+          <p className="mt-2 text-xl font-bold text-gray-900">
+            {categoryDisplay.emoji} {finalTitle}
           </p>
-        </div>
-      </div>
+          <div className="mt-3 space-y-1 text-sm text-gray-700">
+            <p>📍 {city.trim() || "Choose a city or map location"}</p>
+            <p>
+              🕒{" "}
+              {datePart && timePart
+                ? new Date(`${datePart}T${timePart}`).toLocaleString()
+                : "Not set yet"}
+            </p>
+            <p>
+              👥{" "}
+              {autoApprove
+                ? "Anyone can join"
+                : "Request to join (organizer approval required)"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-      <section className="ui-card space-y-4">
-        <h3 className="section-title text-lg">Activity</h3>
+      <Card>
+        <CardHeader className="p-5 pb-0">
+          <CardTitle className="text-lg">Activity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-5">
 
         <div className="space-y-2">
           <p className="label-base mb-0">Quick categories</p>
@@ -443,13 +454,7 @@ export default function CreateEventForm({
               const isActive = category === option.value;
 
               return (
-                <button
-                  className={[
-                    "cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition",
-                    isActive
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-700 hover:bg-indigo-100",
-                  ].join(" ")}
+                <Button
                   key={option.value}
                   onClick={() => {
                     setCategory(option.value);
@@ -457,10 +462,12 @@ export default function CreateEventForm({
                       setCustomCategoryTitle("");
                     }
                   }}
+                  size="sm"
                   type="button"
+                  variant={isActive ? "default" : "secondary"}
                 >
                   {option.emoji} {option.label}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -470,8 +477,7 @@ export default function CreateEventForm({
           <label className="label-base" htmlFor="category">
             All categories
           </label>
-          <select
-            className="input-base"
+          <Select
             id="category"
             onChange={(e) => {
               const nextCategory = e.target.value as EventCategory;
@@ -491,7 +497,7 @@ export default function CreateEventForm({
                 ))}
               </optgroup>
             ))}
-          </select>
+          </Select>
         </div>
 
         {category === "OTHER" ? (
@@ -499,8 +505,7 @@ export default function CreateEventForm({
             <label className="label-base" htmlFor="customCategoryTitle">
               Other category title
             </label>
-            <input
-              className="input-base"
+            <Input
               id="customCategoryTitle"
               maxLength={60}
               onChange={(e) => setCustomCategoryTitle(e.target.value)}
@@ -518,8 +523,7 @@ export default function CreateEventForm({
           <label className="label-base" htmlFor="customName">
             Custom name (optional)
           </label>
-          <input
-            className="input-base"
+          <Input
             id="customName"
             onChange={(e) => setCustomName(e.target.value)}
             placeholder="Leave empty to generate a name automatically"
@@ -530,10 +534,14 @@ export default function CreateEventForm({
             <p className="mt-1 text-sm text-red-600">{errors.customName}</p>
           ) : null}
         </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="ui-card space-y-4">
-        <h3 className="section-title text-lg">Location</h3>
+      <Card>
+        <CardHeader className="p-5 pb-0">
+          <CardTitle className="text-lg">Location</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-5">
         <p className="text-xs text-gray-600">
           Use address, city, or map point. At least one is required.
         </p>
@@ -558,8 +566,7 @@ export default function CreateEventForm({
           <label className="label-base" htmlFor="address">
             Address / place (optional)
           </label>
-          <input
-            className="input-base"
+          <Input
             id="address"
             maxLength={120}
             placeholder="Park, street, cafe, forest, trail..."
@@ -574,16 +581,17 @@ export default function CreateEventForm({
             value={address}
           />
           <div className="mt-2 flex items-center gap-2">
-            <button
-              className="btn-secondary !rounded-lg !px-3 !py-1.5"
+            <Button
               disabled={isGeocoding}
               onClick={() => {
                 void geocodeAddress();
               }}
+              size="sm"
               type="button"
+              variant="secondary"
             >
               Find Address
-            </button>
+            </Button>
             {isGeocoding ? <span className="text-sm text-gray-600">Finding...</span> : null}
           </div>
           {errors.address ? (
@@ -601,18 +609,21 @@ export default function CreateEventForm({
             </p>
           ) : null}
         </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="ui-card space-y-4">
-        <h3 className="section-title text-lg">Date & Time</h3>
+      <Card>
+        <CardHeader className="p-5 pb-0">
+          <CardTitle className="text-lg">Date & Time</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-5">
         <p className="text-xs text-gray-600">Choose a date and a start time.</p>
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <label className="label-base" htmlFor="date">
               Date
             </label>
-            <input
-              className="input-base"
+            <Input
               id="date"
               onChange={(e) => setDatePart(e.target.value)}
               type="date"
@@ -623,8 +634,7 @@ export default function CreateEventForm({
             <label className="label-base" htmlFor="time">
               Time
             </label>
-            <select
-              className="input-base"
+            <Select
               id="time"
               onChange={(e) => setTimePart(e.target.value)}
               value={timePart}
@@ -635,24 +645,27 @@ export default function CreateEventForm({
                   {timeValue}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         <p className="text-xs text-gray-500">
           Time can be selected only in 15-minute increments.
         </p>
         {errors.date ? <p className="text-sm text-red-600">{errors.date}</p> : null}
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="ui-card space-y-4">
-        <h3 className="section-title text-lg">Details</h3>
+      <Card>
+        <CardHeader className="p-5 pb-0">
+          <CardTitle className="text-lg">Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-5">
 
         <div>
           <label className="label-base" htmlFor="description">
             Description
           </label>
-          <textarea
-            className="input-base"
+          <Textarea
             id="description"
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
@@ -664,8 +677,7 @@ export default function CreateEventForm({
           <label className="label-base" htmlFor="contactMethod">
             Contact method
           </label>
-          <select
-            className="input-base"
+          <Select
             id="contactMethod"
             onChange={(e) => {
               const value = e.target.value as ContactMethod;
@@ -681,7 +693,7 @@ export default function CreateEventForm({
                 {option.label}
               </option>
             ))}
-          </select>
+          </Select>
           {errors.contactMethod ? (
             <p className="mt-1 text-sm text-red-600">{errors.contactMethod}</p>
           ) : null}
@@ -692,8 +704,7 @@ export default function CreateEventForm({
             <label className="label-base" htmlFor="whatsappInviteUrl">
               WhatsApp group invite link
             </label>
-            <input
-              className="input-base"
+            <Input
               id="whatsappInviteUrl"
               onChange={(e) => setWhatsappInviteUrl(e.target.value)}
               placeholder="https://chat.whatsapp.com/..."
@@ -713,8 +724,7 @@ export default function CreateEventForm({
           <label className="label-base" htmlFor="contactVisibility">
             Contact visibility
           </label>
-          <select
-            className="input-base"
+          <Select
             id="contactVisibility"
             onChange={(e) =>
               setContactVisibility(e.target.value as ContactVisibility)
@@ -726,22 +736,25 @@ export default function CreateEventForm({
                 {option.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {errors.whatsappInviteUrl ? (
           <p className="text-sm text-red-600">{errors.whatsappInviteUrl}</p>
         ) : null}
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="ui-card space-y-4">
-        <h3 className="section-title text-lg">Join policy</h3>
+      <Card>
+        <CardHeader className="p-5 pb-0">
+          <CardTitle className="text-lg">Join policy</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-5">
         <div>
           <label className="label-base" htmlFor="joinPolicy">
             Who can join
           </label>
-          <select
-            className="input-base"
+          <Select
             id="joinPolicy"
             onChange={(event) => {
               setAutoApprove(event.target.value === "ANYONE");
@@ -752,19 +765,25 @@ export default function CreateEventForm({
             <option value="REQUEST">
               Request to join (organizer approval required)
             </option>
-          </select>
+          </Select>
+          <div className="mt-2">
+            <Badge variant={autoApprove ? "success" : "secondary"}>
+              {autoApprove ? "Anyone can join" : "Approval required"}
+            </Badge>
+          </div>
         </div>
-      </section>
+        </CardContent>
+      </Card>
 
       {errors.location ? <p className="text-sm text-red-600">{errors.location}</p> : null}
 
-      <button
-        className="w-full rounded-xl bg-indigo-600 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-indigo-700"
+      <Button
+        className="w-full py-3 text-lg font-semibold"
         disabled={isSubmitting}
         type="submit"
       >
         {isSubmitting ? "Saving..." : resolvedSubmitLabel}
-      </button>
+      </Button>
       {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
     </form>
   );

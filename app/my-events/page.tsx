@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent } from "@/src/components/ui/card";
 import { getCategoryDisplay } from "@/src/lib/eventCategories";
 import { useSessionClient } from "@/src/lib/sessionClient";
 import type { Event } from "@/src/types/event";
@@ -101,16 +104,14 @@ export default function MyEventsPage() {
           );
 
           return (
-            <article
-              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md"
-              key={event.id}
-            >
+            <Card className="hover:shadow-md" key={event.id}>
+              <CardContent className="p-4">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0 space-y-3">
                   <div>
-                    <p className="text-sm text-gray-600">
+                    <Badge className="mb-1" variant="secondary">
                       {categoryMeta.emoji} {categoryMeta.label}
-                    </p>
+                    </Badge>
                     <Link
                       className="mt-1 block text-xl font-semibold text-gray-900 transition hover:text-indigo-700"
                       href={`/events/${event.id}`}
@@ -145,49 +146,41 @@ export default function MyEventsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 md:max-w-[360px] md:justify-end">
-                  <Link
-                    className="btn-primary !rounded-lg !px-3 !py-2"
-                    href={`/events/${event.id}`}
-                  >
-                    View details
-                  </Link>
-                  <Link
-                    className="btn-primary !rounded-lg !px-3 !py-2"
-                    href={`/edit/${event.id}`}
-                  >
-                    Edit
-                  </Link>
-                  <Link
-                    className="btn-secondary !rounded-lg !px-3 !py-2"
-                    href={`/create?duplicate=${event.id}`}
-                  >
-                    Duplicate
-                  </Link>
-                  <Link
-                    className="btn-secondary !rounded-lg !px-3 !py-2"
-                    href={`/events/${event.id}/manage`}
-                  >
-                    Manage Requests
-                  </Link>
-                  <button
-                    className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 hover:text-red-700"
+                  <Button asChild size="sm">
+                    <Link href={`/events/${event.id}`}>View details</Link>
+                  </Button>
+                  <Button asChild size="sm">
+                    <Link href={`/edit/${event.id}`}>Edit</Link>
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/create?duplicate=${event.id}`}>Duplicate</Link>
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/events/${event.id}/manage`}>Manage Requests</Link>
+                  </Button>
+                  <Button
                     onClick={() => {
                       void handleDelete(event.id);
                     }}
+                    size="sm"
                     type="button"
+                    variant="danger-ghost"
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
-            </article>
+              </CardContent>
+            </Card>
           );
         })}
 
         {!loading && events.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm">
+          <Card>
+            <CardContent className="p-6 text-center text-gray-500">
             You have no events yet.
-          </div>
+            </CardContent>
+          </Card>
         ) : null}
       </div>
     </main>

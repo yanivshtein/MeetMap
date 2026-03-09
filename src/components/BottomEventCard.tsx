@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { Button } from "@/src/components/ui/button";
+import { Card } from "@/src/components/ui/card";
 import { getCategoryDisplay } from "@/src/lib/eventCategories";
 import type { Event } from "@/src/types/event";
 
@@ -32,9 +34,9 @@ export default function BottomEventCard({
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[1200] flex justify-center px-0 sm:bottom-6 sm:px-4">
-      <div
+      <Card
         className={[
-          "pointer-events-auto transform border bg-white shadow-xl transition duration-200",
+          "pointer-events-auto transform transition duration-200",
           "w-full max-w-none rounded-t-2xl p-5 sm:w-[90%] sm:max-w-xl sm:rounded-2xl",
           event
             ? "translate-y-0 opacity-100"
@@ -65,33 +67,29 @@ export default function BottomEventCard({
               ) : null}
             </div>
 
-            <Link
-              className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white no-underline transition hover:bg-indigo-700"
-              href={`/events/${event.id}`}
-            >
-              View details
-            </Link>
+            <Button asChild className="w-full">
+              <Link href={`/events/${event.id}`}>View details</Link>
+            </Button>
 
             {isOwner ? (
               <div className="flex gap-4 text-sm">
-                <Link
-                  className="font-medium text-gray-600 no-underline transition hover:text-gray-900"
-                  href={`/edit/${event.id}`}
-                >
-                  Edit
-                </Link>
-                <button
-                  className="font-medium text-red-500 transition hover:text-red-700"
+                <Button asChild size="sm" variant="ghost">
+                  <Link href={`/edit/${event.id}`}>Edit</Link>
+                </Button>
+                <Button
+                  className="px-0"
                   onClick={() => onDelete(event.id)}
+                  size="sm"
                   type="button"
+                  variant="danger-ghost"
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
         ) : null}
-      </div>
+      </Card>
     </div>
   );
 }
