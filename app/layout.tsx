@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Event Planner",
-  description: "Create and explore events on a map",
+  title: "MeetMap",
+  description: "Discover and join local activities around you.",
 };
 
 export default function RootLayout({

@@ -85,7 +85,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-[1200] h-14 border-b border-gray-200/90 bg-white/95 shadow-sm backdrop-blur">
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4">
-        <div className="text-base font-semibold tracking-tight">Event Planner</div>
+        <div className="text-base font-semibold tracking-tight">MeetMap</div>
 
         <nav className="flex items-center gap-1.5 md:gap-2">
           <NavLink href="/" label="Map" />

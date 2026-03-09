@@ -252,10 +252,10 @@ export default function HomePage() {
     <main className="app-shell page-stack">
       <section className="ui-card-static rounded-2xl bg-gradient-to-r from-indigo-50 via-white to-blue-50 px-6 py-10 text-center md:px-10 md:py-12">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-          Find and organize activities around you
+          MeetMap
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-base text-gray-600 md:text-lg">
-          Discover events, meet people, and create your own activities.
+          Discover activities around you
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           {[

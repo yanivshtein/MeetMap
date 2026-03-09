@@ -174,96 +174,113 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="app-shell page-stack max-w-3xl">
-      <h1 className="page-title">Settings</h1>
-
-      <div className="ui-card-static">
-        {loading ? <p className="body-muted">Loading profile...</p> : null}
-
-        <label className="label-base" htmlFor="phone">
-          Phone (optional)
-        </label>
-        <input
-          className="input-base"
-          id="phone"
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="+972501234567"
-          type="tel"
-          value={phone}
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Used when an event contact method is Organizer phone.
+    <main className="app-shell page-stack max-w-2xl mx-auto">
+      <header>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900">Settings</h1>
+        <p className="mt-2 text-gray-600">
+          Manage your preferences and notification settings.
         </p>
+      </header>
 
-        <div className="mt-4">
-          <CityAutocomplete
-            label="Home town"
-            onChange={setHomeTown}
-            onSelectionChange={setHomeTownSelected}
-            placeholder="Search city"
-            selected={homeTownSelected}
-            value={homeTown}
-          />
-        </div>
-        <p className="mt-1 text-xs text-gray-500">
-          Get notifications when new events matching your interests are created in your town.
-        </p>
+      {loading ? <p className="body-muted">Loading profile...</p> : null}
 
-        <div className="mt-4">
-          <p className="label-base mb-2">Interested categories</p>
-          <div className="max-h-56 space-y-3 overflow-y-auto rounded-lg border border-gray-200 p-3">
+      <div className="space-y-6">
+        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="section-title text-lg">Contact information</h2>
+
+          <div className="mt-4">
+            <label className="label-base" htmlFor="phone">
+              📞 Phone number
+            </label>
+            <input
+              className="input-base"
+              id="phone"
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+972501234567"
+              type="tel"
+              value={phone}
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Used when an event contact method is Organizer phone.
+            </p>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="section-title text-lg">Location preferences</h2>
+
+          <div className="mt-4">
+            <CityAutocomplete
+              label="📍 Home town"
+              onChange={setHomeTown}
+              onSelectionChange={setHomeTownSelected}
+              placeholder="Search city"
+              selected={homeTownSelected}
+              value={homeTown}
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Get notifications when new events matching your interests are created in your town.
+            </p>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="section-title text-lg">Activity interests</h2>
+          <div className="mt-4 max-h-80 space-y-4 overflow-y-auto rounded-lg border border-gray-200 p-3">
             {CATEGORY_GROUPS.map((group) => (
               <div key={group.group}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   {group.group}
                 </p>
-                <div className="mt-1 space-y-1">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {group.options.map((option) => {
                     const checked = interestedCategories.includes(option.value);
                     return (
-                      <label
-                        className="flex items-center gap-2 text-sm"
+                      <button
+                        className={[
+                          "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
+                          checked
+                            ? "border-indigo-400 bg-indigo-100 text-indigo-800"
+                            : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
+                        ].join(" ")}
                         key={option.value}
-                      >
-                        <input
-                          checked={checked}
-                          onChange={(e) => {
-                            setInterestedCategories((prev) => {
-                              if (e.target.checked) {
-                                return [...prev, option.value];
-                              }
-
+                        onClick={() => {
+                          setInterestedCategories((prev) => {
+                            if (checked) {
                               return prev.filter((item) => item !== option.value);
-                            });
-                          }}
-                          type="checkbox"
-                        />
+                            }
+
+                            return [...prev, option.value];
+                          });
+                        }}
+                        type="button"
+                      >
                         <span>
                           {option.emoji} {option.label}
                         </span>
-                      </label>
+                      </button>
                     );
                   })}
                 </div>
               </div>
             ))}
           </div>
-        </div>
-
-        <button
-          className="btn-primary mt-3"
-          disabled={saving}
-          onClick={() => {
-            void handleSave();
-          }}
-          type="button"
-        >
-          {saving ? "Saving..." : "Save"}
-        </button>
-
-        {error ? <p className="body-muted mt-2 text-red-600">{error}</p> : null}
-        {success ? <p className="body-muted mt-2 text-green-700">{success}</p> : null}
+        </section>
       </div>
+
+      <button
+        className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white shadow-md transition hover:bg-indigo-700"
+        disabled={saving}
+        onClick={() => {
+          void handleSave();
+        }}
+        type="button"
+      >
+        {saving ? "Saving..." : "Save settings"}
+      </button>
+
+      {error ? <p className="body-muted text-red-600">{error}</p> : null}
+      {success ? <p className="body-muted text-green-700">{success}</p> : null}
     </main>
   );
 }

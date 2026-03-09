@@ -1,6 +1,8 @@
-# Event Planner Web
+# MeetMap
 
-A minimal event planner MVP built with Next.js App Router, TypeScript, Tailwind CSS, Leaflet, and Prisma + PostgreSQL.
+Discover activities around you
+
+A minimal activity discovery and planning app built with Next.js App Router, TypeScript, Tailwind CSS, Leaflet, and Prisma + PostgreSQL.
 
 ## Tech Stack
 

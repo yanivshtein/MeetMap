@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { getCategoryDisplay } from "@/src/lib/eventCategories";
 import { useSessionClient } from "@/src/lib/sessionClient";
 import type { Event } from "@/src/types/event";
 
@@ -39,6 +40,20 @@ export default function JoinedEventsPage() {
     }
   };
 
+  const handleLeaveEvent = async (id: string) => {
+    setError(null);
+    const response = await fetch(`/api/events/${id}/attendance`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      setError("Failed to leave event.");
+      return;
+    }
+
+    setEvents((prev) => prev.filter((event) => event.id !== id));
+  };
+
   useEffect(() => {
     if (!isAuthenticated) {
       return;
@@ -73,46 +88,96 @@ export default function JoinedEventsPage() {
 
   return (
     <main className="app-shell page-stack">
-      <h1 className="page-title">Joined Events</h1>
+      <header>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+          Joined Events
+        </h1>
+        <p className="mt-2 text-gray-600">Activities you have joined.</p>
+      </header>
 
       {error ? <p className="body-muted text-red-600">{error}</p> : null}
       {loading ? <p className="body-muted">Loading...</p> : null}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium">Title</th>
-              <th className="px-4 py-3 font-medium">Address</th>
-              <th className="px-4 py-3 font-medium">Date</th>
-              <th className="px-4 py-3 font-medium">Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr className="border-t" key={event.id}>
-                <td className="px-4 py-3">
-                  <Link className="text-indigo-700 underline" href={`/events/${event.id}`}>
-                    {event.title}
+      <section className="space-y-4">
+        {events.map((event) => {
+          const categoryMeta = getCategoryDisplay(
+            event.category,
+            event.customCategoryTitle,
+          );
+          const attendeeCount = event.attendanceCount ?? event._count?.attendances;
+          const locationText = event.city
+            ? event.address
+              ? `${event.city} · ${event.address}`
+              : event.city
+            : event.address || "No specific place";
+
+          return (
+            <article
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md"
+              key={event.id}
+            >
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0 space-y-3">
+                  <div>
+                    <p className="text-xl font-semibold text-gray-900">
+                      {categoryMeta.emoji} {event.title}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p>📍 {locationText}</p>
+                    <p>
+                      🕒{" "}
+                      {event.dateISO
+                        ? new Date(event.dateISO).toLocaleString()
+                        : "Date not scheduled"}
+                    </p>
+                    <p>
+                      👤 Organizer:{" "}
+                      {event.user?.name?.trim() || "Organizer not available"}
+                    </p>
+                    {typeof attendeeCount === "number" ? (
+                      <p>👥 {attendeeCount} attending</p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 md:max-w-[360px] md:justify-end">
+                  <Link
+                    className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+                    href={`/events/${event.id}`}
+                  >
+                    View details
                   </Link>
-                </td>
-                <td className="px-4 py-3">{event.address ?? "-"}</td>
-                <td className="px-4 py-3">
-                  {event.dateISO ? new Date(event.dateISO).toLocaleString() : "-"}
-                </td>
-                <td className="px-4 py-3">{new Date(event.joinedAtISO).toLocaleString()}</td>
-              </tr>
-            ))}
-            {!loading && events.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-gray-500" colSpan={4}>
-                  You have not joined any events yet.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                  <Link className="btn-secondary !rounded-lg !px-4 !py-2" href="/">
+                    Open on map
+                  </Link>
+                  <button
+                    className="px-1 text-sm font-medium text-red-500 transition hover:text-red-700"
+                    onClick={() => {
+                      void handleLeaveEvent(event.id);
+                    }}
+                    type="button"
+                  >
+                    Leave event
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+
+        {!loading && events.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-gray-600">You haven&apos;t joined any activities yet.</p>
+            <div className="mt-4">
+              <Link className="btn-primary" href="/">
+                Explore activities
+              </Link>
+            </div>
+          </div>
+        ) : null}
+      </section>
     </main>
   );
 }

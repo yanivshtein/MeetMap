@@ -75,3 +75,48 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await getAuthSession();
+    const userId = await resolveUserId(session);
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    const event = await db.event.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!event) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await db.attendance.deleteMany({
+      where: {
+        eventId: id,
+        userId,
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown server error";
+    return NextResponse.json(
+      {
+        error:
+          process.env.NODE_ENV === "production"
+            ? "Server error while leaving event."
+            : `Server error while leaving event: ${message}`,
+      },
+      { status: 500 },
+    );
+  }
+}
