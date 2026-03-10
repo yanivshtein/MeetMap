@@ -151,7 +151,7 @@ export default function LocationPickerMap({
   return (
     <div className="relative h-full w-full">
       <button
-        className="absolute right-3 top-3 z-[1000] rounded-md bg-white px-3 py-1 text-xs font-medium shadow"
+        className="absolute right-3 top-3 z-[1000] min-h-[44px] rounded-lg bg-white px-3 py-2 text-sm font-medium shadow"
         onClick={requestLocation}
         type="button"
       >

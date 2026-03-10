@@ -9,13 +9,22 @@ import { Button } from "@/src/components/ui/button";
 
 const LOGO_SRC = "/logo-icon.png";
 
-function NavLink({ href, label }: { href: string; label: string }) {
+function NavLink({
+  href,
+  label,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  onClick?: () => void;
+}) {
   const pathname = usePathname();
   const isActive = pathname === href;
 
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={[
         "rounded-lg px-3 py-2 text-sm font-medium transition",
         isActive
@@ -32,6 +41,7 @@ export default function Navbar() {
   const { data: session, status } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
   const [logoFailed, setLogoFailed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -113,7 +123,7 @@ export default function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1.5 md:gap-2">
+        <nav className="hidden items-center gap-1.5 md:flex md:gap-2">
           <NavLink href="/" label="Map" />
           <NavLink href="/create" label="Create" />
           {status === "authenticated" ? (
@@ -163,7 +173,75 @@ export default function Navbar() {
             </Button>
           )}
         </nav>
+
+        <div className="flex items-center gap-2 md:hidden">
+          {status === "authenticated" ? (
+            <Link
+              className="relative rounded-lg px-2 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              href="/notifications"
+              title="Notifications"
+            >
+              <span aria-hidden="true">🔔</span>
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              ) : null}
+            </Link>
+          ) : null}
+          <Button
+            aria-expanded={mobileMenuOpen}
+            aria-label="Toggle navigation menu"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            size="icon"
+            type="button"
+            variant="secondary"
+          >
+            {mobileMenuOpen ? "✕" : "☰"}
+          </Button>
+        </div>
       </div>
+      {mobileMenuOpen ? (
+        <div className="border-t border-gray-200 bg-white/98 shadow-md backdrop-blur md:hidden">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3">
+            <NavLink href="/" label="Map" onClick={() => setMobileMenuOpen(false)} />
+            <NavLink href="/create" label="Create" onClick={() => setMobileMenuOpen(false)} />
+            {status === "authenticated" ? (
+              <>
+                <NavLink href="/my-events" label="My Events" onClick={() => setMobileMenuOpen(false)} />
+                <NavLink href="/joined-events" label="Joined Events" onClick={() => setMobileMenuOpen(false)} />
+                <NavLink href="/settings" label="Settings" onClick={() => setMobileMenuOpen(false)} />
+                <NavLink href="/notifications" label="Notifications" onClick={() => setMobileMenuOpen(false)} />
+              </>
+            ) : null}
+            <div className="pt-1">
+              {status === "authenticated" ? (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void signOut();
+                  }}
+                  variant="secondary"
+                >
+                  Sign out
+                </Button>
+              ) : (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void signIn("google");
+                  }}
+                  variant="secondary"
+                >
+                  Sign in
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }

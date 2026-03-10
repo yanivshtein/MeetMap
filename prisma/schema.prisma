@@ -8,38 +8,38 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  name        String?
-  email       String?      @unique
-  image       String?
-  phone       String?
-  homeTown    String?
-  interestedCategories String[] @default([])
-  events      Event[]
-  attendances Attendance[]
-  joinRequests JoinRequest[]
-  notifications Notification[]
+  id                   String         @id @default(cuid())
+  name                 String?
+  email                String?        @unique
+  image                String?
+  phone                String?
+  homeTown             String?
+  interestedCategories String[]       @default([])
+  attendances          Attendance[]
+  events               Event[]
+  joinRequests         JoinRequest[]
+  notifications        Notification[]
 }
 
 model Event {
-  id                  String       @id
-  category            String       @default("COFFEE")
-  customCategoryTitle String?
+  id                  String        @id
   title               String
   description         String?
   address             String?
-  city                String?
-  autoApprove         Boolean      @default(false)
   dateISO             String?
-  contactMethod       String       @default("NONE")
-  contactVisibility   String       @default("SIGNED_IN_ONLY")
-  whatsappInviteUrl   String?
   lat                 Float
   lng                 Float
   createdAtISO        String
   userId              String?
-  user                User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  category            String        @default("COFFEE")
+  customCategoryTitle String?
+  contactMethod       String        @default("NONE")
+  whatsappInviteUrl   String?
+  contactVisibility   String        @default("SIGNED_IN_ONLY")
+  city                String?
+  autoApprove         Boolean       @default(false)
   attendances         Attendance[]
+  user                User?         @relation(fields: [userId], references: [id])
   joinRequests        JoinRequest[]
 
   @@index([createdAtISO])
@@ -54,9 +54,8 @@ model Attendance {
   eventId   String
   userId    String
   createdAt DateTime @default(now())
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
   @@index([eventId])
@@ -70,9 +69,8 @@ model JoinRequest {
   status    String   @default("PENDING")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
   @@index([eventId])
@@ -89,8 +87,7 @@ model Notification {
   message   String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead, createdAt])
 }

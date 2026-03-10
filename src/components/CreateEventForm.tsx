@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import CityAutocomplete from "@/src/components/CityAutocomplete";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
@@ -44,7 +44,10 @@ type CreateEventFormProps = {
   pickedLatLng: LatLng | null;
   onPickedLatLngChange: (value: LatLng) => void;
   onCityChange?: (city: string) => void;
+  onCancel?: () => void;
+  mapSlot?: ReactNode;
   onSubmitSuccess: () => void;
+  preferredQuickCategories?: EventCategory[];
   submitMode?: "create" | "edit";
   submitUrl?: string;
   submitButtonLabel?: string;
@@ -132,7 +135,10 @@ export default function CreateEventForm({
   pickedLatLng,
   onPickedLatLngChange,
   onCityChange,
+  onCancel,
+  mapSlot,
   onSubmitSuccess,
+  preferredQuickCategories,
   submitMode = "create",
   submitUrl,
   submitButtonLabel,
@@ -162,7 +168,7 @@ export default function CreateEventForm({
     category,
     category === "OTHER" ? customCategoryTitle : undefined,
   );
-  const featuredCategoryValues: EventCategory[] = [
+  const defaultQuickCategoryValues: EventCategory[] = [
     "COFFEE",
     "SOCCER",
     "BASKETBALL",
@@ -170,6 +176,55 @@ export default function CreateEventForm({
     "RUNNING",
     "VOLLEYBALL",
   ];
+  const featuredCategoryValues = (() => {
+    const ordered = [
+      ...(preferredQuickCategories ?? []),
+      ...defaultQuickCategoryValues,
+    ];
+    const deduped: EventCategory[] = [];
+    for (const value of ordered) {
+      if (value === "OTHER" || deduped.includes(value)) {
+        continue;
+      }
+      deduped.push(value);
+    }
+    return deduped.slice(0, 8);
+  })();
+  const hasPreferredQuickCategories = Boolean(preferredQuickCategories?.length);
+  const cityErrorForState =
+    !citySelected && city.trim().length > 0
+      ? "Please choose a city from the list."
+      : validateCity(city);
+  const customNameErrorForState =
+    customName.trim().length > 0 && customName.trim().length < 2
+      ? "Custom name must be at least 2 characters."
+      : undefined;
+  const customCategoryTitleErrorForState =
+    category === "OTHER" && customCategoryTitle.trim().length < 2
+      ? "Please enter a title for the Other category."
+      : undefined;
+  const dateErrorForState = validateDateAndTime(datePart, timePart);
+  const whatsappErrorForState = validateWhatsappInviteUrl(
+    contactMethod,
+    whatsappInviteUrl,
+  );
+  const hasAnyLocationInput =
+    Boolean(pickedLatLng) ||
+    (Boolean(city.trim()) && citySelected && !validateCity(city)) ||
+    Boolean(address.trim());
+  const blockingReason = !hasAnyLocationInput
+    ? "Choose a location to continue."
+    : cityErrorForState ||
+        customNameErrorForState ||
+        customCategoryTitleErrorForState ||
+        dateErrorForState ||
+        whatsappErrorForState ||
+        (contactMethod === "NONE"
+          ? "Please choose a contact method."
+          : undefined)
+      ? "Complete the required fields to continue."
+      : null;
+  const disablePrimaryAction = isSubmitting || Boolean(blockingReason);
   const generatedTitle = city.trim()
     ? `${categoryDisplay.label} in ${city.trim()}`
     : `${categoryDisplay.label} event`;
@@ -410,16 +465,19 @@ export default function CreateEventForm({
   };
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      <Card className="border-indigo-200 bg-indigo-50">
-        <CardContent className="p-4">
+    <form
+      className={`space-y-7 ${submitMode === "create" ? "pb-28" : ""}`}
+      onSubmit={handleSubmit}
+    >
+      <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-indigo-100 shadow">
+        <CardContent className="p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
             Live Preview
           </p>
-          <p className="mt-2 text-xl font-bold text-gray-900">
+          <p className="mt-2 text-2xl font-bold text-gray-900">
             {categoryDisplay.emoji} {finalTitle}
           </p>
-          <div className="mt-3 space-y-1 text-sm text-gray-700">
+          <div className="mt-4 space-y-2 text-sm text-gray-700">
             <p>📍 {city.trim() || "Choose a city or map location"}</p>
             <p>
               🕒{" "}
@@ -445,6 +503,9 @@ export default function CreateEventForm({
 
         <div className="space-y-2">
           <p className="label-base mb-0">Quick categories</p>
+          {hasPreferredQuickCategories ? (
+            <p className="text-xs text-indigo-700">Based on your interests</p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             {featuredCategoryValues.map((value) => {
               const option = CATEGORY_OPTIONS.find((item) => item.value === value);
@@ -455,6 +516,12 @@ export default function CreateEventForm({
 
               return (
                 <Button
+                  className={[
+                    "rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap border",
+                    isActive
+                      ? "border-indigo-500 bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white"
+                      : "border-gray-300 bg-gray-100 text-gray-700 hover:bg-indigo-100",
+                  ].join(" ")}
                   key={option.value}
                   onClick={() => {
                     setCategory(option.value);
@@ -464,7 +531,7 @@ export default function CreateEventForm({
                   }}
                   size="sm"
                   type="button"
-                  variant={isActive ? "default" : "secondary"}
+                  variant="secondary"
                 >
                   {option.emoji} {option.label}
                 </Button>
@@ -474,6 +541,9 @@ export default function CreateEventForm({
         </div>
 
         <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            More categories
+          </p>
           <label className="label-base" htmlFor="category">
             All categories
           </label>
@@ -542,9 +612,16 @@ export default function CreateEventForm({
           <CardTitle className="text-lg">Location</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 p-5">
-        <p className="text-xs text-gray-600">
-          Use address, city, or map point. At least one is required.
-        </p>
+        <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3">
+          <p className="text-sm font-medium text-indigo-800">
+            You can set the location in any of these ways:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-indigo-700">
+            <li>Choose a city</li>
+            <li>Enter an address or place</li>
+            <li>Click directly on the map</li>
+          </ul>
+        </div>
         <div>
           <CityAutocomplete
             label="City"
@@ -611,6 +688,7 @@ export default function CreateEventForm({
         </div>
         </CardContent>
       </Card>
+      {mapSlot}
 
       <Card>
         <CardHeader className="p-5 pb-0">
@@ -739,18 +817,10 @@ export default function CreateEventForm({
           </Select>
         </div>
 
-        {errors.whatsappInviteUrl ? (
-          <p className="text-sm text-red-600">{errors.whatsappInviteUrl}</p>
-        ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="p-5 pb-0">
-          <CardTitle className="text-lg">Join policy</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 p-5">
-        <div>
+        <div className="border-t border-gray-200 pt-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Join policy
+          </p>
           <label className="label-base" htmlFor="joinPolicy">
             Who can join
           </label>
@@ -772,18 +842,55 @@ export default function CreateEventForm({
             </Badge>
           </div>
         </div>
-        </CardContent>
+
+        {errors.whatsappInviteUrl ? (
+          <p className="text-sm text-red-600">{errors.whatsappInviteUrl}</p>
+        ) : null}
+      </CardContent>
       </Card>
 
       {errors.location ? <p className="text-sm text-red-600">{errors.location}</p> : null}
 
-      <Button
-        className="w-full py-3 text-lg font-semibold"
-        disabled={isSubmitting}
-        type="submit"
-      >
-        {isSubmitting ? "Saving..." : resolvedSubmitLabel}
-      </Button>
+      {submitMode === "create" ? (
+        <div className="sticky bottom-0 z-20 -mx-2 rounded-t-xl border-t border-gray-200 bg-white/95 px-2 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => {
+                if (onCancel) {
+                  onCancel();
+                  return;
+                }
+
+                if (typeof window !== "undefined") {
+                  window.history.back();
+                }
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 py-3 text-base font-semibold"
+              disabled={disablePrimaryAction}
+              type="submit"
+            >
+              {isSubmitting ? "Saving..." : resolvedSubmitLabel}
+            </Button>
+          </div>
+          {blockingReason ? (
+            <p className="mt-2 text-xs text-gray-600">{blockingReason}</p>
+          ) : null}
+        </div>
+      ) : (
+        <Button
+          className="w-full py-3 text-lg font-semibold"
+          disabled={disablePrimaryAction}
+          type="submit"
+        >
+          {isSubmitting ? "Saving..." : resolvedSubmitLabel}
+        </Button>
+      )}
       {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
     </form>
   );

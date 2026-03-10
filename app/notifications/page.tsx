@@ -229,26 +229,27 @@ export default function NotificationsPage() {
             </div>
             <div className="mt-3">
               {notification.eventId ? (
-                <Link
-                  className="font-medium text-indigo-600 transition hover:underline"
-                  href={`/events/${notification.eventId}`}
-                  onClick={() => {
-                    if (notification.isRead) {
-                      return;
-                    }
+                <Button asChild className="w-full sm:w-auto" size="sm">
+                  <Link
+                    href={`/events/${notification.eventId}`}
+                    onClick={() => {
+                      if (notification.isRead) {
+                        return;
+                      }
 
-                    const next = notifications.map((item) =>
-                      item.id === notification.id
-                        ? { ...item, isRead: true }
-                        : item,
-                    );
-                    setNotifications(next);
-                    emitUnreadCount(next.filter((item) => !item.isRead).length);
-                    void markSingleRead(notification.id);
-                  }}
-                >
-                  Open event
-                </Link>
+                      const next = notifications.map((item) =>
+                        item.id === notification.id
+                          ? { ...item, isRead: true }
+                          : item,
+                      );
+                      setNotifications(next);
+                      emitUnreadCount(next.filter((item) => !item.isRead).length);
+                      void markSingleRead(notification.id);
+                    }}
+                  >
+                    Open event
+                  </Link>
+                </Button>
               ) : null}
             </div>
             </CardContent>
