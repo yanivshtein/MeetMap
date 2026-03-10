@@ -275,14 +275,19 @@ export async function PUT(
       }
     }
 
-    if (dateISO) {
-      const parsed = new Date(dateISO);
-      if (Number.isNaN(parsed.getTime())) {
-        return NextResponse.json(
-          { error: "Date must be valid." },
-          { status: 400 },
-        );
-      }
+    if (!dateISO) {
+      return NextResponse.json(
+        { error: "Please select a date for the event." },
+        { status: 400 },
+      );
+    }
+
+    const parsed = new Date(dateISO);
+    if (Number.isNaN(parsed.getTime())) {
+      return NextResponse.json(
+        { error: "Date must be valid." },
+        { status: 400 },
+      );
     }
 
     const event = await db.event.update({
@@ -294,7 +299,7 @@ export async function PUT(
         city: normalizedCity ?? "",
         description: description || null,
         address: address || null,
-        dateISO: dateISO || null,
+        dateISO,
         contactMethod,
         contactVisibility,
         whatsappInviteUrl:

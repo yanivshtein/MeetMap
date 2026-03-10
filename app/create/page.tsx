@@ -277,7 +277,7 @@ export default function CreatePage() {
                   <p className="body-muted mt-1">
                     Click anywhere on the map to place the event location.
                   </p>
-                  <div className="h-[280px] overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+                  <div className="h-[300px] overflow-hidden rounded-xl border border-gray-200 shadow-sm sm:h-[320px]">
                     <LocationPickerMap
                       center={[32.0853, 34.7818]}
                       focusLatLng={mapFocusLatLng}

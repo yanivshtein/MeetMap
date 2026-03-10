@@ -112,6 +112,25 @@ export async function GET(request: Request) {
   const westRaw = searchParams.get("west");
 
   const where: Prisma.EventWhereInput = {};
+  const expirationCutoffISO = new Date(
+    Date.now() - 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  // Hide expired scheduled events from public listings:
+  // keep unscheduled events, and keep scheduled events until 24h after start time.
+  where.AND = [
+    ...(Array.isArray(where.AND) ? where.AND : []),
+    {
+      OR: [
+        { dateISO: null },
+        {
+          dateISO: {
+            gte: expirationCutoffISO,
+          },
+        },
+      ],
+    },
+  ];
 
   if (q) {
     where.OR = [
@@ -360,14 +379,19 @@ export async function POST(request: Request) {
       }
     }
 
-    if (dateISO) {
-      const parsed = new Date(dateISO);
-      if (Number.isNaN(parsed.getTime())) {
-        return NextResponse.json(
-          { error: "Date must be valid." },
-          { status: 400 },
-        );
-      }
+    if (!dateISO) {
+      return NextResponse.json(
+        { error: "Please select a date for the event." },
+        { status: 400 },
+      );
+    }
+
+    const parsedDate = new Date(dateISO);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return NextResponse.json(
+        { error: "Date must be valid." },
+        { status: 400 },
+      );
     }
 
     const event = await db.event.create({

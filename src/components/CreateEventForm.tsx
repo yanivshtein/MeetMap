@@ -77,15 +77,11 @@ function validateCity(city: string): string | undefined {
 }
 
 function validateDateAndTime(datePart: string, timePart: string): string | undefined {
-  if (!datePart && !timePart) {
-    return undefined;
+  if (!datePart) {
+    return "Please select a date for the event.";
   }
 
-  if (!datePart || !timePart) {
-    return "Choose both date and time.";
-  }
-
-  const parsed = new Date(`${datePart}T${timePart}`);
+  const parsed = new Date(timePart ? `${datePart}T${timePart}` : `${datePart}T23:59:59.999`);
   if (Number.isNaN(parsed.getTime())) {
     return "Date and time must be valid.";
   }
@@ -233,6 +229,42 @@ export default function CreateEventForm({
   const resolvedSubmitUrl = submitUrl ?? "/api/events";
   const resolvedSubmitLabel =
     submitButtonLabel ?? (submitMode === "edit" ? "Save Changes" : "Save Event");
+  const previewSection = (
+    <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-indigo-100 shadow">
+      <CardContent className="p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+          Live Preview
+        </p>
+        <p className="mt-2 text-2xl font-bold text-gray-900">
+          {categoryDisplay.emoji} {finalTitle}
+        </p>
+        <div className="mt-4 space-y-2 text-sm text-gray-700">
+          <p className="flex items-start gap-2">
+            <span aria-hidden="true">📍</span>
+            <span>{city.trim() || "Choose a city, address, or map location"}</span>
+          </p>
+          <p className="flex items-start gap-2">
+            <span aria-hidden="true">🕒</span>
+            <span>
+              {datePart
+                ? timePart
+                  ? new Date(`${datePart}T${timePart}`).toLocaleString()
+                  : new Date(`${datePart}T00:00`).toLocaleDateString()
+                : "Not set yet"}
+            </span>
+          </p>
+          <p className="flex items-start gap-2">
+            <span aria-hidden="true">👥</span>
+            <span>
+              {autoApprove
+                ? "Anyone can join"
+                : "Request to join (organizer approval required)"}
+            </span>
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   useEffect(() => {
     if (!initialValues) {
@@ -466,34 +498,10 @@ export default function CreateEventForm({
 
   return (
     <form
-      className={`space-y-7 ${submitMode === "create" ? "pb-28" : ""}`}
+      className={`space-y-6 ${submitMode === "create" ? "pb-28" : ""}`}
       onSubmit={handleSubmit}
     >
-      <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-indigo-100 shadow">
-        <CardContent className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
-            Live Preview
-          </p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">
-            {categoryDisplay.emoji} {finalTitle}
-          </p>
-          <div className="mt-4 space-y-2 text-sm text-gray-700">
-            <p>📍 {city.trim() || "Choose a city or map location"}</p>
-            <p>
-              🕒{" "}
-              {datePart && timePart
-                ? new Date(`${datePart}T${timePart}`).toLocaleString()
-                : "Not set yet"}
-            </p>
-            <p>
-              👥{" "}
-              {autoApprove
-                ? "Anyone can join"
-                : "Request to join (organizer approval required)"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="hidden md:block">{previewSection}</div>
 
       <Card>
         <CardHeader className="p-5 pb-0">
@@ -517,7 +525,7 @@ export default function CreateEventForm({
               return (
                 <Button
                   className={[
-                    "rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap border",
+                    "min-h-[44px] rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap border",
                     isActive
                       ? "border-indigo-500 bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white"
                       : "border-gray-300 bg-gray-100 text-gray-700 hover:bg-indigo-100",
@@ -695,7 +703,7 @@ export default function CreateEventForm({
           <CardTitle className="text-lg">Date & Time</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 p-5">
-        <p className="text-xs text-gray-600">Choose a date and a start time.</p>
+        <p className="text-xs text-gray-600">Choose a date. Time is optional.</p>
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <label className="label-base" htmlFor="date">
@@ -727,7 +735,7 @@ export default function CreateEventForm({
           </div>
         </div>
         <p className="text-xs text-gray-500">
-          Time can be selected only in 15-minute increments.
+          Time can be selected only in 15-minute increments, or left empty.
         </p>
         {errors.date ? <p className="text-sm text-red-600">{errors.date}</p> : null}
         </CardContent>
@@ -849,12 +857,15 @@ export default function CreateEventForm({
       </CardContent>
       </Card>
 
+      <div className="md:hidden">{previewSection}</div>
+
       {errors.location ? <p className="text-sm text-red-600">{errors.location}</p> : null}
 
       {submitMode === "create" ? (
-        <div className="sticky bottom-0 z-20 -mx-2 rounded-t-xl border-t border-gray-200 bg-white/95 px-2 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex items-center gap-2">
+        <div className="sticky bottom-0 z-20 rounded-t-xl border-t border-gray-200 bg-white/95 px-2 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur sm:-mx-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
             <Button
+              className="min-h-[44px] w-full sm:w-auto"
               onClick={() => {
                 if (onCancel) {
                   onCancel();
@@ -871,7 +882,7 @@ export default function CreateEventForm({
               Cancel
             </Button>
             <Button
-              className="flex-1 py-3 text-base font-semibold"
+              className="min-h-[44px] w-full py-3 text-base font-semibold sm:flex-1"
               disabled={disablePrimaryAction}
               type="submit"
             >

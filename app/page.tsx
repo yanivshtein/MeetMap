@@ -27,6 +27,49 @@ import type { Event } from "@/src/types/event";
 
 const BOUNDS_PRECISION = 3;
 const MAP_INITIAL_CENTER: [number, number] = [32.0853, 34.7818];
+type TimeFilterOption = "anytime" | "today" | "this_week" | "this_weekend";
+
+function toDateOnlyString(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTimeRange(option: TimeFilterOption): { from?: string; to?: string } {
+  const now = new Date();
+
+  if (option === "anytime") {
+    return {};
+  }
+
+  if (option === "today") {
+    const today = toDateOnlyString(now);
+    return { from: today, to: today };
+  }
+
+  if (option === "this_week") {
+    const endOfWeek = new Date(now);
+    const day = endOfWeek.getDay();
+    const daysUntilSaturday = (6 - day + 7) % 7;
+    endOfWeek.setDate(endOfWeek.getDate() + daysUntilSaturday);
+    return {
+      from: toDateOnlyString(now),
+      to: toDateOnlyString(endOfWeek),
+    };
+  }
+
+  const start = new Date(now);
+  const day = start.getDay();
+  const daysUntilFriday = (5 - day + 7) % 7;
+  start.setDate(start.getDate() + daysUntilFriday);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+  return {
+    from: toDateOnlyString(start),
+    to: toDateOnlyString(end),
+  };
+}
 
 function roundToPrecision(value: number, precision: number) {
   const factor = 10 ** precision;
@@ -64,6 +107,7 @@ export default function HomePage() {
     null,
   );
   const [filters, setFilters] = useState<EventsFilters>({});
+  const [timeFilter, setTimeFilter] = useState<TimeFilterOption>("anytime");
   const [bounds, setBounds] = useState<EventsBounds | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -116,6 +160,15 @@ export default function HomePage() {
     },
     [handleDeletedEvent],
   );
+
+  const effectiveFilters = useMemo<EventsFilters>(() => {
+    const timeRange = getTimeRange(timeFilter);
+    return {
+      ...filters,
+      from: timeRange.from,
+      to: timeRange.to,
+    };
+  }, [filters, timeFilter]);
 
   const loadEvents = useCallback(
     async (nextFilters: EventsFilters, nextBounds: EventsBounds | null) => {
@@ -179,11 +232,11 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    debouncedLoadEvents(filters, bounds);
+    debouncedLoadEvents(effectiveFilters, bounds);
     return () => {
       abortRef.current?.abort();
     };
-  }, [bounds, debouncedLoadEvents, filters]);
+  }, [bounds, debouncedLoadEvents, effectiveFilters]);
 
   useEffect(() => {
     if (events.length === 0) {
@@ -192,7 +245,7 @@ export default function HomePage() {
   }, [events.length]);
 
   const hasActiveFilters = Boolean(
-    filters.q?.trim() || filters.from || filters.to || filters.category,
+    filters.q?.trim() || filters.category || timeFilter !== "anytime",
   );
   const selectedCategory = filters.category
       ? CATEGORY_GROUPS.flatMap((group) => group.options).find(
@@ -325,22 +378,28 @@ export default function HomePage() {
             type="text"
             value={filters.q ?? ""}
           />
-          <Input
-            className="!w-auto !rounded-full !px-4 !py-2"
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, from: e.target.value || undefined }))
-            }
-            type="date"
-            value={filters.from ?? ""}
-          />
-          <Input
-            className="!w-auto !rounded-full !px-4 !py-2"
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, to: e.target.value || undefined }))
-            }
-            type="date"
-            value={filters.to ?? ""}
-          />
+          <div className="flex flex-wrap items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
+            <span className="px-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+              Time
+            </span>
+            {([
+              { value: "anytime", label: "Anytime" },
+              { value: "today", label: "Today" },
+              { value: "this_week", label: "This week" },
+              { value: "this_weekend", label: "This weekend" },
+            ] as const).map((option) => (
+              <Button
+                className="rounded-full px-3"
+                key={option.value}
+                onClick={() => setTimeFilter(option.value)}
+                size="sm"
+                type="button"
+                variant={timeFilter === option.value ? "default" : "secondary"}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
           <Select
             className="!w-auto min-w-44 !rounded-full !px-4 !py-2"
             onChange={(e) =>

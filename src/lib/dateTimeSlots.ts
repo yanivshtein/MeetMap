@@ -9,14 +9,15 @@ export function combineDateAndTimeToISO(
   datePart: string,
   timePart: string,
 ): string | undefined {
-  if (!datePart && !timePart) {
-    return undefined;
-  }
-  if (!datePart || !timePart) {
+  if (!datePart) {
     return undefined;
   }
 
-  const parsed = new Date(`${datePart}T${timePart}`);
+  // If time is omitted, treat the event as date-flexible and anchor it
+  // to end-of-day so expiration happens 24h after that date ends.
+  const parsed = new Date(
+    timePart ? `${datePart}T${timePart}` : `${datePart}T23:59:59.999`,
+  );
   if (Number.isNaN(parsed.getTime())) {
     return undefined;
   }
@@ -58,9 +59,14 @@ export function splitISOToDateAndTime(
   const day = String(parsed.getDate()).padStart(2, "0");
   const hour = String(parsed.getHours()).padStart(2, "0");
   const minute = String(parsed.getMinutes()).padStart(2, "0");
+  const isDateOnlySentinel =
+    parsed.getHours() === 23 &&
+    parsed.getMinutes() === 59 &&
+    parsed.getSeconds() === 59 &&
+    parsed.getMilliseconds() === 999;
 
   return {
     datePart: `${year}-${month}-${day}`,
-    timePart: nearestQuarter(`${hour}:${minute}`),
+    timePart: isDateOnlySentinel ? "" : nearestQuarter(`${hour}:${minute}`),
   };
 }

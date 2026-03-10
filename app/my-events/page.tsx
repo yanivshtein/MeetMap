@@ -102,6 +102,11 @@ export default function MyEventsPage() {
             event.category,
             event.customCategoryTitle,
           );
+          const isPastEvent = Boolean(
+            event.dateISO &&
+              new Date(event.dateISO).getTime() <
+                Date.now() - 24 * 60 * 60 * 1000,
+          );
 
           return (
             <Card className="hover:shadow-md" key={event.id}>
@@ -112,6 +117,11 @@ export default function MyEventsPage() {
                     <Badge className="mb-1" variant="secondary">
                       {categoryMeta.emoji} {categoryMeta.label}
                     </Badge>
+                    {isPastEvent ? (
+                      <Badge className="ml-2 mb-1" variant="outline">
+                        Past event
+                      </Badge>
+                    ) : null}
                     <Link
                       className="mt-1 block text-xl font-semibold text-gray-900 transition hover:text-indigo-700"
                       href={`/events/${event.id}`}

@@ -107,6 +107,11 @@ export default function JoinedEventsPage() {
             event.category,
             event.customCategoryTitle,
           );
+          const isPastEvent = Boolean(
+            event.dateISO &&
+              new Date(event.dateISO).getTime() <
+                Date.now() - 24 * 60 * 60 * 1000,
+          );
           const attendeeCount = event.attendanceCount ?? event._count?.attendances;
           const locationText = event.city
             ? event.address
@@ -123,6 +128,11 @@ export default function JoinedEventsPage() {
                     <Badge className="mb-1" variant="secondary">
                       {categoryMeta.emoji} {categoryMeta.label}
                     </Badge>
+                    {isPastEvent ? (
+                      <Badge className="ml-2 mb-1" variant="outline">
+                        Past event
+                      </Badge>
+                    ) : null}
                     <p className="text-xl font-semibold text-gray-900">
                       {event.title}
                     </p>
