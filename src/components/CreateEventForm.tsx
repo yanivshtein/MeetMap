@@ -514,7 +514,7 @@ export default function CreateEventForm({
 
   return (
     <form
-      className={`space-y-6 ${submitMode === "create" ? "pb-28 md:pb-0" : ""}`}
+      className={`space-y-6 ${submitMode === "create" ? "pb-16 md:pb-0" : ""}`}
       onSubmit={handleSubmit}
     >
       <p className="text-sm text-gray-600">

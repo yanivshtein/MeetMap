@@ -264,10 +264,18 @@ export default function HomePage() {
       : "Try removing some filters or changing the map area."
     : "Be the first to create one!";
 
-  const renderEventsList = (containerClassName?: string) => (
-    <div className={["ui-card-static space-y-3", containerClassName].join(" ")}>
-      <h3 className="section-title text-lg">Activities in this area</h3>
-      <ul className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
+  const renderEventsList = ({
+    containerClassName,
+    listClassName,
+    headerContent,
+  }: {
+    containerClassName?: string;
+    listClassName?: string;
+    headerContent?: React.ReactNode;
+  } = {}) => (
+    <div className={["ui-card-static flex min-h-0 flex-col gap-3", containerClassName].join(" ")}>
+      {headerContent ?? <h3 className="section-title text-lg">Activities in this area</h3>}
+      <ul className={["space-y-2 overflow-y-auto pr-1", listClassName].join(" ")}>
         {events.map((event) => {
           const categoryMeta = getCategoryDisplay(
             event.category,
@@ -446,7 +454,7 @@ export default function HomePage() {
                   onClick={() => setIsMobileListOpen((prev) => !prev)}
                   type="button"
                 >
-                  {isMobileListOpen ? "Hide list" : `Show list (${events.length})`}
+              {isMobileListOpen ? "Hide list" : `Show list (${events.length})`}
                 </button>
               ) : null}
 
@@ -461,14 +469,32 @@ export default function HomePage() {
               />
 
               {events.length > 0 && isMobileListOpen ? (
-                <div className="absolute inset-x-3 bottom-3 z-[1000] max-h-[55%] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl lg:hidden">
-                  {renderEventsList("h-full border-0 shadow-none")}
+                <div className="absolute inset-x-3 bottom-3 z-[1000] h-[min(60%,26rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl lg:hidden">
+                  {renderEventsList({
+                    containerClassName: "h-full border-0 shadow-none",
+                    listClassName: "min-h-0 flex-1",
+                    headerContent: (
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="section-title text-lg">Activities in this area</h3>
+                        <button
+                          aria-label="Close activities list"
+                          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-200 bg-white text-xl leading-none text-gray-600 transition hover:bg-gray-50"
+                          onClick={() => setIsMobileListOpen(false)}
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ),
+                  })}
                 </div>
               ) : null}
             </div>
 
             {!isLoading && events.length > 0 ? (
-              <div className="hidden lg:block">{renderEventsList()}</div>
+              <div className="hidden lg:block">
+                {renderEventsList({ listClassName: "max-h-[28rem]" })}
+              </div>
             ) : null}
             {!isLoading && events.length === 0 ? (
               <div className="hidden lg:block">
