@@ -5,6 +5,8 @@ import { signIn } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CreateEventForm from "@/src/components/CreateEventForm";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent } from "@/src/components/ui/card";
 import {
   type ContactMethod,
   type ContactVisibility,
@@ -34,6 +36,9 @@ export default function EditEventPage() {
   const [mapFocusLatLng, setMapFocusLatLng] = useState<LatLng | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [preferredQuickCategories, setPreferredQuickCategories] = useState<
+    EventCategory[]
+  >([]);
   const [initialValues, setInitialValues] = useState<{
     category?: EventCategory;
     customName?: string;
@@ -47,6 +52,48 @@ export default function EditEventPage() {
     autoApprove?: boolean;
     dateISO?: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfileInterests = async () => {
+      try {
+        const response = await fetch("/api/me", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          interestedCategories?: string[];
+        };
+        if (cancelled) {
+          return;
+        }
+
+        const nextInterests = Array.isArray(data.interestedCategories)
+          ? data.interestedCategories.filter((value): value is EventCategory =>
+              isValidCategory(value),
+            )
+          : [];
+
+        setPreferredQuickCategories(nextInterests);
+      } catch {
+        // Keep fallback defaults if profile load fails.
+      }
+    };
+
+    void loadProfileInterests();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const query = cityQuery.trim();
@@ -169,13 +216,12 @@ export default function EditEventPage() {
       <main className="app-shell page-stack">
         <h1 className="page-title">Edit Event</h1>
         <p className="body-muted">Please sign in to edit events.</p>
-        <button
-          className="btn-primary"
+        <Button
           onClick={() => signIn("google", { callbackUrl: `/edit/${params.id}` })}
           type="button"
         >
           Sign in with Google
-        </button>
+        </Button>
       </main>
     );
   }
@@ -208,11 +254,9 @@ export default function EditEventPage() {
   const locationStatusText =
     locationStatus === "loading"
       ? "Getting your location..."
-      : locationStatus === "success"
-        ? "Centered on your location."
-        : locationStatus === "error"
-          ? `${locationError ?? "Could not get your location."} You can still choose a location by clicking the map.`
-          : "Click the map to choose event location.";
+      : locationStatus === "error"
+        ? `${locationError ?? "Could not get your location."} You can still choose a location by clicking the map.`
+        : null;
 
   return (
     <main className="app-shell page-stack">
@@ -222,36 +266,67 @@ export default function EditEventPage() {
         <div>
           <CreateEventForm
             initialValues={initialValues}
+            mapSlot={
+              <Card className="md:hidden">
+                <CardContent className="space-y-3 p-4">
+                  <h2 className="section-title text-lg">Choose the location on the map</h2>
+                  <p className="body-muted mt-1">
+                    Click anywhere on the map to place the event location.
+                  </p>
+                  <div className="h-[300px] overflow-hidden rounded-xl border border-gray-200 shadow-sm sm:h-[320px]">
+                    <LocationPickerMap
+                      center={[32.0853, 34.7818]}
+                      focusLatLng={mapFocusLatLng}
+                      onLocationStatusChange={({ status, errorMessage }) => {
+                        setLocationStatus(status);
+                        setLocationError(errorMessage);
+                      }}
+                      onChange={setPickedLatLng}
+                      value={pickedLatLng}
+                      zoom={13}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            }
+            onCancel={() => router.push("/my-events")}
             onCityChange={setCityQuery}
             onPickedLatLngChange={setPickedLatLng}
             onSubmitSuccess={() => router.push("/my-events")}
             pickedLatLng={pickedLatLng}
+            preferredQuickCategories={preferredQuickCategories}
             submitButtonLabel="Save Changes"
             submitMode="edit"
             submitUrl={`/api/events/${params.id}`}
+            useStickyActions
           />
         </div>
 
-        <div className="ui-card space-y-3">
-          <h2 className="section-title text-lg">Choose the location on the map</h2>
-          <p className="body-muted mt-1">
-            Choose a city, enter an address, or click directly on the map.
-          </p>
-          <p className="body-muted">{locationStatusText}</p>
-          <div className="h-[420px] overflow-hidden rounded-xl border border-gray-200 shadow-md">
-            <LocationPickerMap
-              center={[32.0853, 34.7818]}
-              focusLatLng={mapFocusLatLng}
-              onLocationStatusChange={({ status, errorMessage }) => {
-                setLocationStatus(status);
-                setLocationError(errorMessage);
-              }}
-              onChange={setPickedLatLng}
-              value={pickedLatLng}
-              zoom={13}
-            />
-          </div>
-        </div>
+        <Card className="hidden space-y-3 md:sticky md:top-20 md:mb-12 md:block md:self-start">
+          <CardContent className="space-y-3 p-5 md:pb-8">
+            <h2 className="section-title text-lg">Choose the location on the map</h2>
+            <p className="body-muted mt-1">
+              You can set location by choosing a city, entering an address/place, or clicking directly on the map.
+            </p>
+            <div className="rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+              Click anywhere on the map to place the event location.
+            </div>
+            {locationStatusText ? <p className="body-muted">{locationStatusText}</p> : null}
+            <div className="h-[420px] overflow-hidden rounded-xl border border-gray-200 shadow-md">
+              <LocationPickerMap
+                center={[32.0853, 34.7818]}
+                focusLatLng={mapFocusLatLng}
+                onLocationStatusChange={({ status, errorMessage }) => {
+                  setLocationStatus(status);
+                  setLocationError(errorMessage);
+                }}
+                onChange={setPickedLatLng}
+                value={pickedLatLng}
+                zoom={13}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </main>
   );

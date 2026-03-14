@@ -51,6 +51,7 @@ type CreateEventFormProps = {
   submitMode?: "create" | "edit";
   submitUrl?: string;
   submitButtonLabel?: string;
+  useStickyActions?: boolean;
   initialValues?: {
     category?: EventCategory;
     customName?: string;
@@ -138,6 +139,7 @@ export default function CreateEventForm({
   submitMode = "create",
   submitUrl,
   submitButtonLabel,
+  useStickyActions,
   initialValues,
 }: CreateEventFormProps) {
   const renderRequiredMark = () => (
@@ -237,6 +239,7 @@ export default function CreateEventForm({
   const resolvedSubmitUrl = submitUrl ?? "/api/events";
   const resolvedSubmitLabel =
     submitButtonLabel ?? (submitMode === "edit" ? "Save Changes" : "Save Event");
+  const shouldUseStickyActions = useStickyActions ?? submitMode === "create";
   const cityErrorId = "city-error";
   const customNameErrorId = "custom-name-error";
   const customCategoryTitleErrorId = "custom-category-title-error";
@@ -308,6 +311,46 @@ export default function CreateEventForm({
     setTimePart(initialTimePart);
     onCityChange?.(initialValues.city ?? "");
   }, [initialValues, onCityChange]);
+
+  useEffect(() => {
+    const trimmedCity = city.trim();
+    if (!citySelected || !trimmedCity || address.trim()) {
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmedCity)}`, {
+          method: "GET",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { lat?: number; lng?: number };
+        if (
+          cancelled ||
+          typeof data.lat !== "number" ||
+          typeof data.lng !== "number" ||
+          !Number.isFinite(data.lat) ||
+          !Number.isFinite(data.lng)
+        ) {
+          return;
+        }
+
+        onPickedLatLngChange({ lat: data.lat, lng: data.lng });
+      } catch {
+        // Ignore city geocoding failures until submission.
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [address, city, citySelected, onPickedLatLngChange]);
 
   const getFriendlySubmitError = async (response: Response) => {
     const rawText = await response.text().catch(() => "");
@@ -514,7 +557,7 @@ export default function CreateEventForm({
 
   return (
     <form
-      className={`space-y-6 ${submitMode === "create" ? "pb-16 md:pb-0" : ""}`}
+      className={`space-y-6 ${shouldUseStickyActions ? "pb-16 md:pb-0" : ""}`}
       onSubmit={handleSubmit}
     >
       <p className="text-sm text-gray-600">
@@ -937,7 +980,7 @@ export default function CreateEventForm({
         </p>
       ) : null}
 
-      {submitMode === "create" ? (
+      {shouldUseStickyActions ? (
         <div className="sticky bottom-0 z-20 rounded-t-xl border-t border-gray-200 bg-white/95 px-2 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur sm:-mx-2">
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
             <Button

@@ -459,15 +459,15 @@ export default function EventDetailsPage() {
           >
             Copy link
           </button>
-          <Link
-            className="btn-secondary"
-            href={`/create?duplicate=${event.id}`}
-          >
-            Duplicate event
-          </Link>
 
           {isOwner ? (
             <>
+              <Link
+                className="btn-secondary"
+                href={`/create?duplicate=${event.id}`}
+              >
+                Duplicate event
+              </Link>
               <Link
                 className="btn-primary !bg-gray-800"
                 href={`/edit/${event.id}`}

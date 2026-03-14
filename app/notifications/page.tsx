@@ -15,6 +15,10 @@ type NotificationItem = {
   message: string;
   isRead: boolean;
   createdAt: string;
+  actionRequest: {
+    eventId: string;
+    requestId: string;
+  } | null;
 };
 
 function getNotificationIcon(type: string) {
@@ -32,6 +36,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
 
   const emitUnreadCount = (count: number) => {
     if (typeof window === "undefined") {
@@ -145,6 +150,52 @@ export default function NotificationsPage() {
     });
   };
 
+  const mutateJoinRequest = async (
+    notificationId: string,
+    eventId: string,
+    requestId: string,
+    action: "approve" | "reject",
+  ) => {
+    setPendingActionId(notificationId);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/events/${eventId}/join-requests/${requestId}/${action}`,
+        {
+          method: "POST",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await getApiErrorMessage(response, `Failed to ${action} request.`),
+        );
+      }
+
+      const next = notifications.map((notification) =>
+        notification.id === notificationId
+          ? {
+              ...notification,
+              isRead: true,
+              actionRequest: null,
+            }
+          : notification,
+      );
+      setNotifications(next);
+      emitUnreadCount(next.filter((item) => !item.isRead).length);
+      await markSingleRead(notificationId);
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error
+          ? actionError.message
+          : `Failed to ${action} request.`,
+      );
+    } finally {
+      setPendingActionId(null);
+    }
+  };
+
   if (status === "loading") {
     return (
       <main className="app-shell max-w-4xl">
@@ -229,27 +280,65 @@ export default function NotificationsPage() {
             </div>
             <div className="mt-3">
               {notification.eventId ? (
-                <Button asChild className="w-full sm:w-auto" size="sm">
-                  <Link
-                    href={`/events/${notification.eventId}`}
-                    onClick={() => {
-                      if (notification.isRead) {
-                        return;
-                      }
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild className="w-full sm:w-auto" size="sm">
+                    <Link
+                      href={`/events/${notification.eventId}`}
+                      onClick={() => {
+                        if (notification.isRead) {
+                          return;
+                        }
 
-                      const next = notifications.map((item) =>
-                        item.id === notification.id
-                          ? { ...item, isRead: true }
-                          : item,
-                      );
-                      setNotifications(next);
-                      emitUnreadCount(next.filter((item) => !item.isRead).length);
-                      void markSingleRead(notification.id);
-                    }}
-                  >
-                    Open event
-                  </Link>
-                </Button>
+                        const next = notifications.map((item) =>
+                          item.id === notification.id
+                            ? { ...item, isRead: true }
+                            : item,
+                        );
+                        setNotifications(next);
+                        emitUnreadCount(next.filter((item) => !item.isRead).length);
+                        void markSingleRead(notification.id);
+                      }}
+                    >
+                      Open event
+                    </Link>
+                  </Button>
+                  {notification.actionRequest ? (
+                    <>
+                      <Button
+                        className="w-full !bg-green-600 sm:w-auto"
+                        disabled={pendingActionId === notification.id}
+                        onClick={() => {
+                          void mutateJoinRequest(
+                            notification.id,
+                            notification.actionRequest!.eventId,
+                            notification.actionRequest!.requestId,
+                            "approve",
+                          );
+                        }}
+                        size="sm"
+                        type="button"
+                      >
+                        {pendingActionId === notification.id ? "Saving..." : "Approve"}
+                      </Button>
+                      <Button
+                        className="w-full !bg-red-600 sm:w-auto"
+                        disabled={pendingActionId === notification.id}
+                        onClick={() => {
+                          void mutateJoinRequest(
+                            notification.id,
+                            notification.actionRequest!.eventId,
+                            notification.actionRequest!.requestId,
+                            "reject",
+                          );
+                        }}
+                        size="sm"
+                        type="button"
+                      >
+                        {pendingActionId === notification.id ? "Saving..." : "Reject"}
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             </CardContent>

@@ -78,6 +78,8 @@ export default function LocationPickerMap({
 }: LocationPickerMapProps) {
   const [defaultIcon, setDefaultIcon] = useState<Icon | undefined>(undefined);
   const [recenterTarget, setRecenterTarget] = useState<LatLng | null>(null);
+  const [shouldSelectCurrentLocation, setShouldSelectCurrentLocation] =
+    useState(false);
   const { status, coords, errorMessage, requestLocation } = useCurrentLocation();
 
   useEffect(() => {
@@ -117,10 +119,17 @@ export default function LocationPickerMap({
     }
 
     setRecenterTarget(coords);
-    if (!value) {
+    if (shouldSelectCurrentLocation) {
       onChange(coords);
+      setShouldSelectCurrentLocation(false);
     }
-  }, [coords, onChange, status, value]);
+  }, [coords, onChange, shouldSelectCurrentLocation, status]);
+
+  useEffect(() => {
+    if (status === "error") {
+      setShouldSelectCurrentLocation(false);
+    }
+  }, [status]);
 
   useEffect(() => {
     if (!value) {
@@ -152,7 +161,10 @@ export default function LocationPickerMap({
     <div className="relative h-full w-full">
       <button
         className="absolute right-3 top-3 z-[1000] min-h-[44px] rounded-lg bg-white px-3 py-2 text-sm font-medium shadow"
-        onClick={requestLocation}
+        onClick={() => {
+          setShouldSelectCurrentLocation(true);
+          requestLocation();
+        }}
         type="button"
       >
         Use my location

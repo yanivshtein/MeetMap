@@ -29,7 +29,7 @@ const LocationPickerMap = dynamic(
 
 export default function CreatePage() {
   const router = useRouter();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [pickedLatLng, setPickedLatLng] = useState<LatLng | null>(null);
   const [cityQuery, setCityQuery] = useState("");
   const [mapFocusLatLng, setMapFocusLatLng] = useState<LatLng | null>(null);
@@ -185,6 +185,12 @@ export default function CreatePage() {
           return;
         }
 
+        if (!session?.user?.id || event.userId !== session.user.id) {
+          setDuplicateInitialValues(null);
+          setDuplicateError("You can only duplicate events you created.");
+          return;
+        }
+
         setDuplicateInitialValues({
           category: isValidCategory(event.category) ? event.category : "COFFEE",
           customName: event.title,
@@ -218,7 +224,7 @@ export default function CreatePage() {
     return () => {
       cancelled = true;
     };
-  }, [duplicateId]);
+  }, [duplicateId, session?.user?.id]);
 
   if (status === "loading") {
     return (
