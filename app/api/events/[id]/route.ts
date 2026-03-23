@@ -56,6 +56,51 @@ type GeocodedLocation = {
   city: string | null;
 };
 
+type ReverseGeocodedLocation = {
+  city: string | null;
+};
+
+type NominatimReverseResult = {
+  display_name?: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    suburb?: string;
+    hamlet?: string;
+    locality?: string;
+    county?: string;
+    state_district?: string;
+  };
+};
+
+function resolveReverseGeocodedCity(result: NominatimReverseResult): string | null {
+  const directLocationFields = [
+    result.address?.city,
+    result.address?.town,
+    result.address?.village,
+    result.address?.municipality,
+    result.address?.suburb,
+    result.address?.hamlet,
+    result.address?.locality,
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+
+  const directLocationMatch = directLocationFields
+    .map((value) => (typeof value === "string" ? findCityInText(value) : null))
+    .find((value): value is string => typeof value === "string" && value.length > 0);
+
+  if (directLocationMatch) {
+    return directLocationMatch;
+  }
+
+  if (directLocationFields.length > 0) {
+    return null;
+  }
+
+  return findCityInText(result.display_name ?? "");
+}
+
 async function geocodeLocation(query: string): Promise<GeocodedLocation | null> {
   const response = await fetch(
     `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
@@ -91,6 +136,30 @@ async function geocodeLocation(query: string): Promise<GeocodedLocation | null> 
     lat,
     lng,
     city: findCityInText(first.display_name ?? ""),
+  };
+}
+
+async function reverseGeocodeLocation(
+  lat: number,
+  lng: number,
+): Promise<ReverseGeocodedLocation | null> {
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}`,
+    {
+      headers: {
+        "User-Agent": "event-planner-app",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const result = (await response.json()) as NominatimReverseResult;
+
+  return {
+    city: resolveReverseGeocodedCity(result),
   };
 }
 
@@ -272,6 +341,13 @@ export async function PUT(
       lng = geocoded.lng;
       if (!normalizedCity && geocoded.city) {
         normalizedCity = geocoded.city;
+      }
+    }
+
+    if (!normalizedCity && hasCoords) {
+      const reverseGeocoded = await reverseGeocodeLocation(lat, lng);
+      if (reverseGeocoded?.city) {
+        normalizedCity = reverseGeocoded.city;
       }
     }
 

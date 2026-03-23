@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/src/components/ui/button";
 
@@ -38,6 +38,8 @@ function NavLink({
 }
 
 export default function Navbar() {
+  const router = useRouter();
+  const pathname = usePathname();
   const { data: session, status } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -96,6 +98,45 @@ export default function Navbar() {
     };
   }, [status]);
 
+  useEffect(() => {
+    if (status !== "authenticated" || pathname === "/settings") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkOnboarding = async () => {
+      try {
+        const response = await fetch("/api/me", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          needsOnboarding?: boolean;
+        };
+
+        if (cancelled || !data.needsOnboarding) {
+          return;
+        }
+
+        router.replace(
+          `/onboarding?returnTo=${encodeURIComponent(pathname || "/")}`,
+        );
+      } catch {
+        // Ignore onboarding check failures and leave the current page usable.
+      }
+    };
+
+    void checkOnboarding();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, router, status]);
+
   return (
     <header className="sticky top-0 z-[1200] h-14 border-b border-gray-200/90 bg-white/95 shadow-sm backdrop-blur">
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4">
@@ -125,6 +166,7 @@ export default function Navbar() {
 
         <nav className="hidden items-center gap-1.5 md:flex md:gap-2">
           <NavLink href="/" label="Map" />
+          <NavLink href="/discover-ai" label="Discover AI" />
           <NavLink href="/create" label="Create" />
           {status === "authenticated" ? (
             <NavLink href="/my-events" label="My Events" />
@@ -205,6 +247,7 @@ export default function Navbar() {
         <div className="border-t border-gray-200 bg-white/98 shadow-md backdrop-blur md:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3">
             <NavLink href="/" label="Map" onClick={() => setMobileMenuOpen(false)} />
+            <NavLink href="/discover-ai" label="Discover AI" onClick={() => setMobileMenuOpen(false)} />
             <NavLink href="/create" label="Create" onClick={() => setMobileMenuOpen(false)} />
             {status === "authenticated" ? (
               <>

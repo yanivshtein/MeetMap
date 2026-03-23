@@ -168,6 +168,8 @@ export default function CreateEventForm({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeMessage, setGeocodeMessage] = useState<string | null>(null);
+  const [isResolvingMapCity, setIsResolvingMapCity] = useState(false);
+  const [mapCityMessage, setMapCityMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const categoryDisplay = getCategoryDisplay(
@@ -309,12 +311,11 @@ export default function CreateEventForm({
       splitISOToDateAndTime(initialValues.dateISO);
     setDatePart(initialDatePart);
     setTimePart(initialTimePart);
-    onCityChange?.(initialValues.city ?? "");
   }, [initialValues, onCityChange]);
 
   useEffect(() => {
     const trimmedCity = city.trim();
-    if (!citySelected || !trimmedCity || address.trim()) {
+    if (!citySelected || !trimmedCity || address.trim() || pickedLatLng) {
       return;
     }
 
@@ -350,7 +351,67 @@ export default function CreateEventForm({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, city, citySelected, onPickedLatLngChange]);
+  }, [address, city, citySelected, onPickedLatLngChange, pickedLatLng]);
+
+  useEffect(() => {
+    if (!pickedLatLng) {
+      setIsResolvingMapCity(false);
+      setMapCityMessage(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setIsResolvingMapCity(true);
+      setMapCityMessage(null);
+
+      try {
+        const response = await fetch(
+          `/api/geocode?lat=${encodeURIComponent(String(pickedLatLng.lat))}&lng=${encodeURIComponent(String(pickedLatLng.lng))}`,
+          {
+            method: "GET",
+          },
+        );
+
+        if (!response.ok) {
+          if (!cancelled) {
+            setMapCityMessage("Could not detect the city from the map point.");
+          }
+          return;
+        }
+
+        const data = (await response.json()) as {
+          city?: string | null;
+        };
+
+        if (cancelled) {
+          return;
+        }
+
+        if (typeof data.city === "string" && data.city.trim()) {
+          setCity(data.city);
+          setCitySelected(true);
+          setMapCityMessage(`City detected from map: ${data.city}`);
+          return;
+        }
+
+        setMapCityMessage("Map point saved, but the nearby city could not be detected.");
+      } catch {
+        if (!cancelled) {
+          setMapCityMessage("Could not detect the city from the map point.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsResolvingMapCity(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [onCityChange, pickedLatLng]);
 
   const getFriendlySubmitError = async (response: Response) => {
     const rawText = await response.text().catch(() => "");
@@ -544,7 +605,6 @@ export default function CreateEventForm({
         if (extractedCity) {
           setCity(extractedCity);
           setCitySelected(true);
-          onCityChange?.(extractedCity);
         }
       }
       setGeocodeMessage("Location found on map");
@@ -730,6 +790,20 @@ export default function CreateEventForm({
           <p className="mt-1 text-xs text-gray-500">
             You can leave this empty if you choose the location on the map.
           </p>
+          {isResolvingMapCity ? (
+            <p className="mt-1 text-sm text-gray-600">Detecting city from map point...</p>
+          ) : null}
+          {mapCityMessage ? (
+            <p
+              className={
+                mapCityMessage.startsWith("City detected")
+                  ? "mt-1 text-sm text-green-700"
+                  : "mt-1 text-sm text-amber-700"
+              }
+            >
+              {mapCityMessage}
+            </p>
+          ) : null}
           {errors.city ? (
             <p className="mt-1 text-sm text-red-600" id={cityErrorId} role="alert">
               {errors.city}

@@ -53,13 +53,23 @@ export async function GET() {
         phone: true,
         homeTown: true,
         interestedCategories: true,
+        onboardingCompleted: true,
       },
     });
+
+    const interestedCategories = user?.interestedCategories ?? [];
+    const hasAnyProfileSetup = Boolean(
+      (user?.phone && user.phone.trim()) ||
+        (user?.homeTown && user.homeTown.trim()) ||
+        interestedCategories.length > 0,
+    );
 
     return NextResponse.json({
       phone: user?.phone ?? null,
       homeTown: user?.homeTown ?? null,
-      interestedCategories: user?.interestedCategories ?? [],
+      interestedCategories,
+      onboardingCompleted: user?.onboardingCompleted ?? false,
+      needsOnboarding: Boolean(user) && !user?.onboardingCompleted && !hasAnyProfileSetup,
     });
   } catch (error) {
     const message =
@@ -132,11 +142,13 @@ export async function PUT(request: Request) {
         phone: rawPhone || null,
         homeTown: normalizedHomeTown,
         interestedCategories,
+        onboardingCompleted: true,
       },
       select: {
         phone: true,
         homeTown: true,
         interestedCategories: true,
+        onboardingCompleted: true,
       },
     });
 
@@ -144,6 +156,8 @@ export async function PUT(request: Request) {
       phone: user.phone ?? null,
       homeTown: user.homeTown ?? null,
       interestedCategories: user.interestedCategories,
+      onboardingCompleted: user.onboardingCompleted,
+      needsOnboarding: false,
     });
   } catch (error) {
     const message =

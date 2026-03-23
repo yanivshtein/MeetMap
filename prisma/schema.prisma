@@ -15,6 +15,7 @@ model User {
   phone                String?
   homeTown             String?
   interestedCategories String[]       @default([])
+  onboardingCompleted  Boolean        @default(false)
   attendances          Attendance[]
   events               Event[]
   joinRequests         JoinRequest[]

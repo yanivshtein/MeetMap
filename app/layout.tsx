@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "@/components/Navbar";
 import AuthProvider from "@/src/components/AuthProvider";
+import AppChrome from "@/src/components/AppChrome";
 import Toaster from "@/src/components/ui/sonner";
 import "./globals.css";
 
@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <Navbar />
+          <AppChrome />
           {children}
           <Toaster />
         </AuthProvider>
